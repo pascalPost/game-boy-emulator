@@ -11,13 +11,17 @@ import (
 )
 
 func replaceNonPrintChars(chars []byte, replaceWith byte) []byte {
-	for i, c := range chars {
+	newChars := make([]byte, len(chars))
+	copy(newChars, chars)
+
+	for i, c := range newChars {
 		// all ASCII values below 32 (space) and starting from 127 (DEL) are replaced
 		if c < 32 || c > 126 {
-			chars[i] = replaceWith
+			newChars[i] = replaceWith
 		}
 	}
-	return chars
+
+	return newChars
 }
 
 func printData(data []byte) {
