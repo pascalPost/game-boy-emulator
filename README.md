@@ -7,6 +7,7 @@ This repository contains the WIP of a game boy emulator written in go.
 1) Create a cli app that dumps the content of ROMs in a format (XXXX : XX XX XX XX  ....) containing the address, the
 byte data and its ASCII representation. You can test, e.g. with this
 [homebrew snake ROM](https://hh.gbdev.io/game/snake-gb). You may use `cmd/hexDump/hexDump.go` as a reference.
+2) Parse the header and crate unit tests w.r.t., e.g., the Title, the Nintendo Logo and the Cartridge type.
 
 ## Resources
 
