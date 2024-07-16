@@ -1,5 +1,10 @@
 package internal
 
+import (
+	"bytes"
+	"encoding/binary"
+)
+
 type Header struct {
 	Raw struct {
 		NotUsed [64 * 4]byte
@@ -47,6 +52,13 @@ type Header struct {
 		// [0x014E:0x0150] https://gbdev.io/pandocs/The_Cartridge_Header.html#014e-014f--global-checksum
 		GlobalChecksum [2]byte
 	}
+}
+
+func NewHeader(b []byte) (Header, error) {
+	header := Header{}
+	buf := bytes.NewReader(b)
+	err := binary.Read(buf, binary.BigEndian, &header)
+	return header, err
 }
 
 func (h *Header) CartridgeType() string {

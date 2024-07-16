@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-type Operands struct {
+type Operand struct {
 	Name      string `json:"name"`
 	Bytes     int    `json:"bytes,omitempty"`
 	Immediate bool   `json:"immediate"`
@@ -24,12 +24,12 @@ type Flags struct {
 }
 
 type Opcode struct {
-	Mnemonic  string     `json:"mnemonic"`
-	Bytes     int        `json:"bytes"`
-	Cycles    []int      `json:"cycles"`
-	Operands  []Operands `json:"operands"`
-	Immediate bool       `json:"immediate"`
-	Flags     Flags      `json:"flags"`
+	Mnemonic  string    `json:"mnemonic"`
+	Bytes     int       `json:"bytes"`
+	Cycles    []int     `json:"cycles"`
+	Operands  []Operand `json:"operands"`
+	Immediate bool      `json:"immediate"`
+	Flags     Flags     `json:"flags"`
 }
 
 type ByteKey struct {
@@ -79,6 +79,8 @@ func (v *ByteKey) UnmarshalText(text []byte) error {
 
 type OpcodeList struct {
 	UnPrefixed map[ByteKey]Opcode `json:"unprefixed"`
+
+	/// CbPrefixed represent all instructions following a 0xCB prefix
 	CbPrefixed map[ByteKey]Opcode `json:"cbprefixed"`
 }
 

@@ -13,7 +13,7 @@ func TestParseOpcodes(t *testing.T) {
 		Mnemonic:  "NOP",
 		Bytes:     1,
 		Cycles:    []int{4},
-		Operands:  []Operands{},
+		Operands:  []Operand{},
 		Immediate: true,
 		Flags: Flags{
 			Z: "-",
