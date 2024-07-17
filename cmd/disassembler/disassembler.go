@@ -40,22 +40,15 @@ func main() {
 	fmt.Printf("Header entry point:\n")
 
 	header, err := internal.NewHeader(buf)
+	if err != nil {
+		log.Panicf("error on reading header: %s", err)
+	}
 	dataBuf := header.Raw.EntryPoint
 	fmt.Printf("% X\n", dataBuf)
 	internal.Disassemble(dataBuf[:], opcodes)
 
 	fmt.Printf("\n")
 	fmt.Printf("Read program (starting from 0x0150):\n")
-
-	//_, err = rom.Seek(0x150, io.SeekStart)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	//_, err = rom.Read(buf)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
 
 	_, err = io.ReadAtLeast(br, buf, 20)
 	if err != nil {
