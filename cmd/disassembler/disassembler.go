@@ -9,6 +9,19 @@ import (
 	"os"
 )
 
+func printInstructions(data []byte, instructions []internal.Instruction, offset uint16) {
+	for _, instruction := range instructions {
+		for i := 0; i < int(instruction.AddressEnd-instruction.AddressStart); i++ {
+			address := instruction.AddressStart + uint16(i) + offset
+			if i == 0 {
+				fmt.Printf("0x%04X %02X %s\n", address, data[address], instruction.Line)
+			} else {
+				fmt.Printf("0x%04X %02X\n", address, data[address])
+			}
+		}
+	}
+}
+
 func main() {
 	opcodes, err := internal.ParseOpcodes()
 	if err != nil {
@@ -39,31 +52,13 @@ func main() {
 	if err != nil {
 		log.Panicf("error on reading header: %s", err)
 	}
-	entryOffset := 0x0100
+	entryOffset := uint16(0x0100)
 	entry := header.Raw.EntryPoint
 	instructions := internal.Disassemble(entry[:], 0, opcodes)
-	for _, instruction := range instructions {
-		for i := 0; i < int(instruction.AddressEnd-instruction.AddressStart); i++ {
-			address := int(instruction.AddressStart) + i + entryOffset
-			if i == 0 {
-				fmt.Printf("0x%04X %02X %s\n", address, data[address], instruction.Line)
-			} else {
-				fmt.Printf("0x%04X %02X\n", address, data[address])
-			}
-		}
-	}
+	printInstructions(data, instructions, entryOffset)
 
 	fmt.Printf("\n")
 	fmt.Printf("Read program:\n")
 	instructions = internal.Disassemble(data[:0x170], 0x0150, opcodes)
-	for _, instruction := range instructions {
-		for i := 0; i < int(instruction.AddressEnd-instruction.AddressStart); i++ {
-			address := int(instruction.AddressStart) + i + entryOffset
-			if i == 0 {
-				fmt.Printf("0x%04X %02X %s\n", address, data[address], instruction.Line)
-			} else {
-				fmt.Printf("0x%04X %02X\n", address, data[address])
-			}
-		}
-	}
+	printInstructions(data, instructions, 0)
 }
