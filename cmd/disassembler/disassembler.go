@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"game-boy-emulator/internal"
 	"io"
@@ -29,31 +28,42 @@ func main() {
 		}
 	}()
 
-	br := bufio.NewReader(rom)
-
-	buf := make([]byte, 0x0150)
-	_, err = io.ReadAtLeast(br, buf, 0x0150)
+	data, err := io.ReadAll(rom)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("error in reading rom")
 	}
 
 	fmt.Printf("Header entry point:\n")
 
-	header, err := internal.NewHeader(buf)
+	header, err := internal.NewHeader(data)
 	if err != nil {
 		log.Panicf("error on reading header: %s", err)
 	}
-	dataBuf := header.Raw.EntryPoint
-	fmt.Printf("% X\n", dataBuf)
-	internal.Disassemble(dataBuf[:], opcodes)
+	entryOffset := 0x0100
+	entry := header.Raw.EntryPoint
+	instructions := internal.Disassemble(entry[:], 0, opcodes)
+	for _, instruction := range instructions {
+		for i := 0; i < int(instruction.AddressEnd-instruction.AddressStart); i++ {
+			address := int(instruction.AddressStart) + i + entryOffset
+			if i == 0 {
+				fmt.Printf("0x%04X %02X %s\n", address, data[address], instruction.Line)
+			} else {
+				fmt.Printf("0x%04X %02X\n", address, data[address])
+			}
+		}
+	}
 
 	fmt.Printf("\n")
-	fmt.Printf("Read program (starting from 0x0150):\n")
-
-	_, err = io.ReadAtLeast(br, buf, 20)
-	if err != nil {
-		log.Fatal(err)
+	fmt.Printf("Read program:\n")
+	instructions = internal.Disassemble(data[:0x170], 0x0150, opcodes)
+	for _, instruction := range instructions {
+		for i := 0; i < int(instruction.AddressEnd-instruction.AddressStart); i++ {
+			address := int(instruction.AddressStart) + i + entryOffset
+			if i == 0 {
+				fmt.Printf("0x%04X %02X %s\n", address, data[address], instruction.Line)
+			} else {
+				fmt.Printf("0x%04X %02X\n", address, data[address])
+			}
+		}
 	}
-	fmt.Printf("% X\n", buf)
-	internal.Disassemble(buf[:], opcodes)
 }

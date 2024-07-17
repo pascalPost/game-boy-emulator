@@ -17,108 +17,145 @@ func toLittleEndian(b []byte) []byte {
 	return address
 }
 
-func littleEndian16BitAddressOrData(data []byte, operand *Operand) ([]byte, string) {
+func littleEndian16BitAddressOrData(data []byte, programCounter uint16, operand *Operand) (uint16, string) {
 	if operand.Bytes != 2 {
 		log.Fatal("unexpected number of bytes.")
 	}
-	value := toLittleEndian(data[0:2])
+	value := toLittleEndian(data[programCounter : programCounter+2])
 	str := fmt.Sprintf(" 0x%X", value)
-	remainingData := data[2:]
-	return remainingData, str
+	programCounter += 2
+	return programCounter, str
 }
 
-func immediate8BitData(data []byte, operand *Operand) ([]byte, string) {
+func immediate8BitData(data []byte, programCounter uint16, operand *Operand) (uint16, string) {
 	if operand.Bytes != 1 {
 		log.Fatal("unexpected number of bytes.")
 	}
-	str := fmt.Sprintf(" 0x%.2X", data[0])
-	remainingData := data[1:]
-	return remainingData, str
+	str := fmt.Sprintf(" 0x%.2X", data[programCounter])
+	programCounter++
+	return programCounter, str
 }
 
-func handleOperand(data []byte, operand *Operand) ([]byte, string) {
+func signed8BitData(data []byte, programCounter uint16, operand *Operand) (uint16, string) {
+	if operand.Bytes != 1 {
+		log.Fatal("unexpected number of bytes.")
+	}
+	str := fmt.Sprintf("%d (0x%.2X)", int8(data[programCounter]), data[programCounter])
+	programCounter++
+	return programCounter, str
+}
+
+func handleOperand(data []byte, programCounter uint16, operand *Operand) (uint16, string) {
+	operandStr := ""
 	switch operand.Name {
 	case "AF":
 		// 16-bit register (Accumulator & Flags)
-		return data, " AF"
+		operandStr += " AF"
 	case "A":
 		// 8-bit Hi part of AF
-		return data, " A"
+		operandStr += " A"
+	case "BC":
+		// 8-bit Hi part of BC
+		operandStr += " BC"
 	case "B":
 		// 8-bit Hi part of BC
-		return data, " B"
+		operandStr += " B"
 	case "C":
 		// 8-bit Lo part of BC
-		return data, " C"
+		// or
+		// Condition code: Execute if C is set.
+		operandStr += " C"
 	case "D":
 		// 8-bit Hi part of DE
-		return data, " D"
+		operandStr += " D"
 	case "E":
 		// 8-bit Lo part of DE
-		return data, " E"
+		operandStr += " E"
+	case "HL":
+		// 8-bit Hi part of HL
+		operandStr += " HL"
 	case "H":
 		// 8-bit Hi part of HL
-		return data, " H"
+		operandStr += " H"
 	case "L":
 		// 8-bit Lo part of HL
-		return data, " L"
+		operandStr += " L"
 	case "SP":
 		// 16-bit register (Stack Pointer)
-		return data, " SP"
+		operandStr += " SP"
 	case "n8":
 		// immediate 8-bit data
-		return immediate8BitData(data, operand)
+		return immediate8BitData(data, programCounter, operand)
 	case "n16":
 		// immediate little-endian 16-bit data
-		return littleEndian16BitAddressOrData(data, operand)
+		return littleEndian16BitAddressOrData(data, programCounter, operand)
 	case "a16":
 		// little-endian 16-bit address
-		return littleEndian16BitAddressOrData(data, operand)
+		return littleEndian16BitAddressOrData(data, programCounter, operand)
+	case "e8":
+		// 8-bit signed data (offset)
+		return signed8BitData(data, programCounter, operand)
+	case "Z":
+		// Condition code: Execute if Z is set.
+		operandStr += " Z"
+	case "NZ":
+		// Condition code: Execute if Z is not set.
+		operandStr += " NZ"
+	case "NC":
+		// Condition code: Execute if C is not set.
+		operandStr += " NC"
 	default:
 		log.Panicf("unknown operand name: {%s}", operand.Name)
 	}
-	return nil, ""
+	return programCounter, operandStr
 }
 
-func readOperands(data []byte, operands []Operand) ([]byte, string) {
+func readOperands(data []byte, programCounter uint16, operands []Operand) (uint16, string) {
 	operandStr := ""
 	for _, operand := range operands {
-		newDataStack, str := handleOperand(data, &operand)
-		data = newDataStack
+		newProgramCounter, str := handleOperand(data, programCounter, &operand)
+		programCounter = newProgramCounter
 		operandStr += str
 	}
-	return data, operandStr
+	return programCounter, operandStr
 }
 
 type Instruction struct {
-	Line    string
-	Address byte
-	Data    []byte
+	Line         string
+	AddressStart uint16
+	AddressEnd   uint16
 }
 
-func Disassemble(dataStack []byte, list *OpcodeList) []Instruction {
-	instructions := make([]Instruction, 0, len(dataStack))
+func parseOpcode(data []byte, programCounter uint16, list *OpcodeList) (uint16, Opcode) {
+	prefixed := isPrefixed(data[programCounter])
 
-	for len(dataStack) > 0 {
+	var opcode Opcode
+	if !prefixed {
+		opcode = list.UnPrefixed[ByteKey{data[programCounter]}]
+	} else {
+		programCounter++
+		opcode = list.UnPrefixed[ByteKey{data[programCounter]}]
+	}
+	programCounter++
+	return programCounter, opcode
+}
+
+func Disassemble(data []byte, programCounter uint16, list *OpcodeList) []Instruction {
+	instructions := make([]Instruction, 0, len(data))
+
+	for int(programCounter) < len(data) {
 		i := Instruction{}
+		i.AddressStart = programCounter
 
-		prefixed := isPrefixed(dataStack[0])
-
-		var opcode Opcode
-		if !prefixed {
-			opcode = list.UnPrefixed[ByteKey{dataStack[0]}]
-		} else {
-			dataStack = dataStack[1:]
-			opcode = list.UnPrefixed[ByteKey{dataStack[0]}]
-		}
-		dataStack = dataStack[1:]
-
+		newProgramCounter, opcode := parseOpcode(data, programCounter, list)
+		programCounter = newProgramCounter
 		i.Line += opcode.Mnemonic
 
-		data, str := readOperands(dataStack, opcode.Operands)
-		dataStack = data
+		newProgramCounter, str := readOperands(data, programCounter, opcode.Operands)
+		programCounter = newProgramCounter
 		i.Line += str
 
+		i.AddressEnd = programCounter
 		instructions = append(instructions, i)
 	}
 
