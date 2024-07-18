@@ -23,7 +23,7 @@ func TestDisassembler(t *testing.T) {
 	assert.NoError(t, err)
 
 	for _, d := range data {
-		instructions := Disassemble(d.code, opcodes)
+		instructions := Disassemble(d.code, 0, opcodes)
 		assert.Equal(t, 1, len(instructions))
 		assert.Equal(t, d.instruction, instructions[0].Line)
 	}
