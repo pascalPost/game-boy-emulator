@@ -1,25 +1,22 @@
 package internal
 
-//type cpu struct {
-//	AF [2]byte // Accumulator & Flags, A refers to Hi, Lo contains flags
-//	BC [2]byte
-//	DE [2]byte
-//	HL [2]byte
-//	SP [2]byte
-//	PC [2]byte
-//
-// // allocate the memory here (?) would be [0xffff]byte
-//
-//}
-//
-//func (c *cpu) A() {
-//	return
-//}
-//
-//func readMemory(addr byte) byte {
-//
-//}
-//
+type registers struct {
+	a  byte // Accumulator
+	b  byte
+	c  byte
+	d  byte
+	e  byte
+	f  byte // Flags
+	h  byte
+	l  byte
+	sp [2]byte // Stack Pointer
+	pc [2]byte // Program Counter/Pointer
+}
+
+func (c *registers) A() byte {
+	return c.a
+}
+
 //func executeInstruction() {
 //	opcode := readMemory(PC)
 //}

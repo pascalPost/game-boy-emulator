@@ -22,6 +22,11 @@ Main references:
 
 Others (not yet checked):
 - A go example for the Game Boy Advance: https://dev.to/aurelievache/learning-go-by-examples-part-5-create-a-game-boy-advance-gba-game-in-go-5944
+- General detailed document about emulation:
+  - http://www.codeslinger.co.uk/files/emu.pdf
+- explanation of the opcodes:
+  - https://gist.github.com/SakiiR/62661e45ee8b2ab13f0dc8203a7dfbd9
+  - https://rgbds.gbdev.io/docs/v0.8.0/gbz80.7#LD_SP,n16
 - Rust examples:
   - https://jeremybanks.github.io/0dmg/
   - https://rylev.github.io/DMG-01/public/book/introduction.html
@@ -29,6 +34,3 @@ Others (not yet checked):
 - C/C++:
   - https://cturt.github.io/cinoop.html
   - http://www.codeslinger.co.uk/pages/projects/gameboy.html
-
-
-
