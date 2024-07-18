@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"game-boy-emulator/internal"
+	"github.com/pascalPost/game-boy-emulator/cmd"
+	"github.com/pascalPost/game-boy-emulator/internal"
 	"io"
 	"log"
 	"log/slog"
@@ -23,12 +24,12 @@ func printInstructions(data []byte, instructions []internal.Instruction, offset 
 }
 
 func main() {
+	fileName := cmd.FileNameFromArguments("disassembler")
+
 	opcodes, err := internal.ParseOpcodes()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	fileName := "roms/snake.gb"
 
 	rom, err := os.Open(fileName)
 	if err != nil {
@@ -59,6 +60,6 @@ func main() {
 
 	fmt.Printf("\n")
 	fmt.Printf("Read program:\n")
-	instructions = internal.Disassemble(data[:0x170], 0x0150, opcodes)
+	instructions = internal.Disassemble(data, 0x0150, opcodes)
 	printInstructions(data, instructions, 0)
 }

@@ -27,7 +27,7 @@ func littleEndian16BitAddressOrData(data []byte, programCounter uint16, operand 
 	return programCounter, str
 }
 
-func immediate8BitData(data []byte, programCounter uint16, operand *Operand) (uint16, string) {
+func unsigned8BitData(data []byte, programCounter uint16, operand *Operand) (uint16, string) {
 	if operand.Bytes != 1 {
 		log.Fatal("unexpected number of bytes.")
 	}
@@ -55,7 +55,7 @@ func handleOperand(data []byte, programCounter uint16, operand *Operand) (uint16
 		// 8-bit Hi part of AF
 		operandStr += " A"
 	case "BC":
-		// 8-bit Hi part of BC
+		// 16-bit register
 		operandStr += " BC"
 	case "B":
 		// 8-bit Hi part of BC
@@ -65,6 +65,9 @@ func handleOperand(data []byte, programCounter uint16, operand *Operand) (uint16
 		// or
 		// Condition code: Execute if C is set.
 		operandStr += " C"
+	case "DE":
+		// 16-bit register
+		operandStr += " DE"
 	case "D":
 		// 8-bit Hi part of DE
 		operandStr += " D"
@@ -85,10 +88,13 @@ func handleOperand(data []byte, programCounter uint16, operand *Operand) (uint16
 		operandStr += " SP"
 	case "n8":
 		// immediate 8-bit data
-		return immediate8BitData(data, programCounter, operand)
+		return unsigned8BitData(data, programCounter, operand)
 	case "n16":
 		// immediate little-endian 16-bit data
 		return littleEndian16BitAddressOrData(data, programCounter, operand)
+	case "a8":
+		// means 8-bit unsigned data, which is added to $FF00 in certain instructions to create a 16-bit address in HRAM (High RAM)
+		return unsigned8BitData(data, programCounter, operand)
 	case "a16":
 		// little-endian 16-bit address
 		return littleEndian16BitAddressOrData(data, programCounter, operand)
@@ -104,6 +110,22 @@ func handleOperand(data []byte, programCounter uint16, operand *Operand) (uint16
 	case "NC":
 		// Condition code: Execute if C is not set.
 		operandStr += " NC"
+	case "$00":
+		operandStr += " 0x00(H)"
+	case "$08":
+		operandStr += " 0x08(H)"
+	case "$10":
+		operandStr += " 0x10(H)"
+	case "$18":
+		operandStr += " 0x18(H)"
+	case "$20":
+		operandStr += " 0x20(H)"
+	case "$28":
+		operandStr += " 0x28(H)"
+	case "$30":
+		operandStr += " 0x30(H)"
+	case "$38":
+		operandStr += " 0x38(H)"
 	default:
 		log.Panicf("unknown operand name: {%s}", operand.Name)
 	}

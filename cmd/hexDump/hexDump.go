@@ -1,8 +1,8 @@
 package main
 
 import (
-	"flag"
 	"fmt"
+	"github.com/pascalPost/game-boy-emulator/cmd"
 	"io"
 	"log"
 	"log/slog"
@@ -47,31 +47,8 @@ func printData(data []byte) {
 	}
 }
 
-func printHelp() {
-	fmt.Println("Usage: hexDump [OPTIONS] FILE")
-	fmt.Println("Options:")
-	fmt.Println("  -h    Display this help message and exit")
-}
-
-func fileNameFromArguments() string {
-	help := flag.Bool("h", false, "Display this help message and exit")
-
-	flag.Parse()
-
-	if *help {
-		printHelp()
-		os.Exit(0)
-	}
-	if flag.NArg() == 0 {
-		printHelp()
-		os.Exit(1)
-	}
-
-	return flag.Arg(0)
-}
-
 func main() {
-	fileName := fileNameFromArguments()
+	fileName := cmd.FileNameFromArguments("hexDump")
 
 	rom, err := os.Open(fileName)
 	if err != nil {

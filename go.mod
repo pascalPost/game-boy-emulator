@@ -1,4 +1,4 @@
-module game-boy-emulator
+module github.com/pascalPost/game-boy-emulator
 
 go 1.22
 
