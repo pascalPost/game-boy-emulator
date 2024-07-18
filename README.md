@@ -1,5 +1,7 @@
 # game-boy-emulator
 
+[![Go build & test](https://github.com/pascalPost/game-boy-emulator/actions/workflows/go.yml/badge.svg)](https://github.com/pascalPost/game-boy-emulator/actions/workflows/go.yml)
+
 This repository contains the WIP of a game boy emulator written in go.
 
 ## Steps

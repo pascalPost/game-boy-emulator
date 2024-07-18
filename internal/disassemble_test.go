@@ -2,6 +2,8 @@ package internal
 
 import (
 	"github.com/stretchr/testify/assert"
+	"io"
+	"net/http"
 	"testing"
 )
 
@@ -27,4 +29,23 @@ func TestDisassembler(t *testing.T) {
 		assert.Equal(t, 1, len(instructions))
 		assert.Equal(t, d.instruction, instructions[0].Line)
 	}
+}
+
+func TestDisassembleSnake(t *testing.T) {
+	snakeUrl := "https://hh3.gbdev.io/static/database-gb/entries/snake-gb/snake.gb"
+	resp, err := http.Get(snakeUrl)
+	assert.NoError(t, err)
+	defer func() {
+		err := resp.Body.Close()
+		assert.NoError(t, err)
+	}()
+
+	data, err := io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+
+	opcodes, err := ParseOpcodes()
+	assert.NoError(t, err)
+
+	instructions := Disassemble(data, 0x0150, opcodes)
+	assert.Greater(t, len(instructions), 0)
 }
