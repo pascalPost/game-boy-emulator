@@ -56,6 +56,42 @@ func jp(memory *memory, programCounter *uint16) {
 	logInstruction(memory, pc, instructionLengthInBytes, fmt.Sprintf("JP 0x%04X", a16), "JP nn: Unconditional jump to the absolute address specified by the 16-bit immediate operand nn.")
 }
 
+func relativeJump(memory *memory, programCounter *uint16) {
+	pc := *programCounter
+
+	n8 := readUnsigned8(memory, programCounter)
+	e8 := int8(n8)
+	newPc := int32(*programCounter) + int32(e8)
+	if newPc < 0 {
+		panic("negative program counter encountered.")
+	}
+	*programCounter = uint16(newPc)
+
+	instructionLengthInBytes := 2
+	instruction := fmt.Sprintf("JR %d", e8)
+	description := "JR e: Unconditional jump to the relative address speciﬁed by the signed 8-bit operand e."
+	logInstruction(memory, pc, instructionLengthInBytes, instruction, description)
+}
+
+func relativeJumpConditional(memory *memory, programCounter *uint16, condition bool, conditionName string) {
+	pc := *programCounter
+
+	n8 := readUnsigned8(memory, programCounter)
+	e8 := int8(n8)
+	if condition {
+		newPc := int32(*programCounter) + int32(e8)
+		if newPc < 0 {
+			panic("negative program counter encountered.")
+		}
+		*programCounter = uint16(newPc)
+	}
+
+	instructionLengthInBytes := 2
+	instruction := fmt.Sprintf("JR %s, %d", conditionName, e8)
+	description := "JR cc, e: Conditional jump to the relative address speciﬁed by the signed 8-bit operand e, depending on the condition cc."
+	logInstruction(memory, pc, instructionLengthInBytes, instruction, description)
+}
+
 func load16BitToRegister(memory *memory, programCounter *uint16, register *uint16, registerName string) {
 	pc := *programCounter
 	instructionLengthInBytes := 3
@@ -108,14 +144,47 @@ func load8BitToAddressInHL(memory *memory, programCounter *uint16, registerHL ui
 	logInstruction(memory, pc, instructionLengthInBytes, instruction, description)
 }
 
-func loadFromAccumulator(memory *memory, programCounter *uint16, registerA uint8) {
+func loadFromAccumulatorDirect(memory *memory, programCounter *uint16, registerA uint8) {
 	pc := *programCounter
-	instructionLengthInBytes := 3
 	a16 := readUnsigned16(memory, programCounter)
 	memory.write(a16, registerA)
-	instruction := fmt.Sprintf("LD %04X A", a16)
-	description := "LD a16, A: Load to the absolute address speciﬁed by the 16-bit operand a16, data from the 8-bit A register."
+
+	instructionLengthInBytes := 3
+	instruction := fmt.Sprintf("LD [%04X], A", a16)
+	description := "LD [a16], A: Load to the absolute address speciﬁed by the 16-bit operand a16, data from the 8-bit A register."
 	logInstruction(memory, pc, instructionLengthInBytes, instruction, description)
+}
+
+func loadFromRegisterIndirect(memory *memory, programCounter uint16, registerDest uint16, registerSource uint8, registerDestName, registerSourceName string) {
+	a16 := registerDest
+	memory.write(a16, registerSource)
+
+	instructionLengthInBytes := 1
+	instruction := fmt.Sprintf("LD [%s], %s", registerDestName, registerSourceName)
+	description := "LD [r'], r: Load to the absolute address speciﬁed by the 16-bit register r', data from the 8-bit register r."
+	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
+func loadAccumulatorIndirectHLIncrement(memory *memory, programCounter uint16, registerA *uint8, registerHL *uint16) {
+	a8 := memory.read(*registerHL)
+	*registerA = a8
+	*registerHL++
+
+	instructionLengthInBytes := 1
+	instruction := "LDI A, [HL]"
+	description := "LDI A, [HL]: Load to the 8-bit A register, data from the absolute address speciﬁed by the 16-bit register HL. The value of HL is incremented after the memory read."
+	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
+func loadAccumulatorIndirectHLDecrement(memory *memory, programCounter uint16, registerA *uint8, registerHL *uint16) {
+	a8 := memory.read(*registerHL)
+	*registerA = a8
+	*registerHL--
+
+	instructionLengthInBytes := 1
+	instruction := "LDD A, [HL]"
+	description := "LDD A, [HL]: Load to the 8-bit A register, data from the absolute address speciﬁed by the 16-bit register HL. The value of HL is incremented after the memory read."
+	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
 }
 
 func call(memory *memory, programCounter *uint16, stackPointer *uint16) {
@@ -157,9 +226,7 @@ func returnFromFunction(memory *memory, programCounter *uint16, stackPointer *ui
 	logInstruction(memory, pc, instructionLengthInBytes, instruction, description)
 }
 
-func returnFromFunctionConditional(memory *memory, programCounter *uint16, stackPointer *uint16,
-	condition bool,
-	conditionName string) {
+func returnFromFunctionConditional(memory *memory, programCounter *uint16, stackPointer *uint16, condition bool, conditionName string) {
 	pc := *programCounter
 
 	if condition {
@@ -184,5 +251,133 @@ func bitwiseOrRegister(memory *memory, programCounter uint16, registerA *uint8, 
 	instructionLengthInBytes := 1
 	instruction := fmt.Sprintf("OR A %s", registerName)
 	description := "Performs a bitwise OR operation between the 8-bit A register and the 8-bit register r, and stores the result back into the A register."
+	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
+func halfCarryAdd(a, b uint8) bool {
+	return (a&0b1111)+(b&0b1111) > 0b1111
+}
+
+func carryAdd(a, b uint8) bool {
+	return uint16(a)+uint16(b) > 0b1111_1111
+}
+
+func addImpl(registerA *uint8, n8 uint8, flags flagsPtr) {
+	a := *registerA
+	result := a + n8
+	*registerA = result
+
+	flags.clear()
+
+	if result == 0 {
+		flags.setZ()
+	}
+	flags.setN()
+	if halfCarryAdd(a, n8) {
+		flags.setH()
+	}
+	if carryAdd(a, n8) {
+		flags.setC()
+	}
+}
+
+func addRegister(memory *memory, programCounter uint16, registerA *uint8, register uint8, flags flagsPtr, registerName string) {
+	addImpl(registerA, register, flags)
+	instructionLengthInBytes := 1
+	instruction := fmt.Sprintf("ADD %s", registerName)
+	description := "Adds to the 8-bit A register, the 8-bit register r, and stores the result back into the A register."
+	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
+func addIndirectHL(memory *memory, programCounter uint16, registerA *uint8, registerHL uint16, flags flagsPtr) {
+	n8 := memory.read(registerHL)
+	addImpl(registerA, n8, flags)
+
+	instructionLengthInBytes := 1
+	instruction := "ADD [HL]"
+	description := "Adds from the 8-bit A register, data from the absolute address speciﬁed by the 16-bit register HL, and stores the result back into the A register."
+	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
+func addImmediate(memory *memory, programCounter *uint16, registerA *uint8, flags flagsPtr) {
+	pc := *programCounter
+	n8 := readUnsigned8(memory, programCounter)
+	addImpl(registerA, n8, flags)
+	instructionLengthInBytes := 2
+	instruction := fmt.Sprintf("ADD 0x%02X", n8)
+	description := "Adds from the 8-bit A register, the immediate data n, and stores the result back into the A register."
+	logInstruction(memory, pc, instructionLengthInBytes, instruction, description)
+}
+
+func halfCarrySub(a, b uint8) bool {
+	return (a & 0b1111) < (b & 0b1111)
+}
+
+func carrySub(a, b uint8) bool {
+	return a < b
+}
+
+func subtractImpl(registerA *uint8, n8 uint8, flags flagsPtr) {
+	a := *registerA
+	result := a - n8
+	*registerA = result
+
+	flags.clear()
+
+	if result == 0 {
+		flags.setZ()
+	}
+	flags.setN()
+	if halfCarrySub(a, n8) {
+		flags.setH()
+	}
+	if carrySub(a, n8) {
+		flags.setC()
+	}
+}
+
+func subtractRegister(memory *memory, programCounter uint16, registerA *uint8, register uint8, flags flagsPtr, registerName string) {
+	subtractImpl(registerA, register, flags)
+	instructionLengthInBytes := 1
+	instruction := fmt.Sprintf("SUB %s", registerName)
+	description := "Subtracts from the 8-bit A register, the 8-bit register r, and stores the result back into the A register."
+	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
+func subtractIndirectHL(memory *memory, programCounter uint16, registerA *uint8, registerHL uint16, flags flagsPtr) {
+	n8 := memory.read(registerHL)
+	subtractImpl(registerA, n8, flags)
+
+	instructionLengthInBytes := 1
+	instruction := "SUB [HL]"
+	description := "Subtracts from the 8-bit A register, data from the absolute address speciﬁed by the 16-bit register HL, and stores the result back into the A register."
+	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
+func subtractImmediate(memory *memory, programCounter *uint16, registerA *uint8, flags flagsPtr) {
+	pc := *programCounter
+	n8 := readUnsigned8(memory, programCounter)
+	subtractImpl(registerA, n8, flags)
+	instructionLengthInBytes := 2
+	instruction := fmt.Sprintf("SUB 0x%02X", n8)
+	description := "Subtracts from the 8-bit A register, the immediate data n, and stores the result back into the A register."
+	logInstruction(memory, pc, instructionLengthInBytes, instruction, description)
+}
+
+func increment16BitRegister(memory *memory, programCounter uint16, register *uint16, registerName string) {
+	*register++
+
+	instructionLengthInBytes := 1
+	instruction := fmt.Sprintf("INC %s", registerName)
+	description := "INC rr: Increments data in the 16-bit register rr."
+	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
+func decrement16BitRegister(memory *memory, programCounter uint16, register *uint16, registerName string) {
+	*register--
+
+	instructionLengthInBytes := 1
+	instruction := fmt.Sprintf("DEC %s", registerName)
+	description := "DEC rr: Decrements data in the 16-bit register rr."
 	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
 }

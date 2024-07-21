@@ -357,10 +357,32 @@ func (cpu *cpu) runInstruction(memory *memory) {
 	case 0xC3:
 		jp(memory, &cpu.registers.pc)
 
-	case 0xCD:
-		call(memory, &cpu.registers.pc, &cpu.registers.sp)
+	case 0x18:
+		relativeJump(memory, &cpu.registers.pc)
+
+	case 0x20:
+		relativeJumpConditional(memory, &cpu.registers.pc, !cpu.registers.flags().z(), "NZ")
+	case 0x28:
+		relativeJumpConditional(memory, &cpu.registers.pc, cpu.registers.flags().z(), "Z")
+	case 0x30:
+		relativeJumpConditional(memory, &cpu.registers.pc, !cpu.registers.flags().c(), "NC")
+	case 0x38:
+		relativeJumpConditional(memory, &cpu.registers.pc, cpu.registers.flags().c(), "c")
+
+	case 0x02:
+		loadFromRegisterIndirect(memory, cpu.registers.pc, cpu.registers.bc, cpu.registers.a(), "BC", "A")
+	case 0x12:
+		loadFromRegisterIndirect(memory, cpu.registers.pc, cpu.registers.de, cpu.registers.a(), "DE", "A")
+	case 0x77:
+		loadFromRegisterIndirect(memory, cpu.registers.pc, cpu.registers.hl, cpu.registers.a(), "HL", "A")
 	case 0xEA:
-		loadFromAccumulator(memory, &cpu.registers.pc, cpu.registers.a())
+		loadFromAccumulatorDirect(memory, &cpu.registers.pc, cpu.registers.a())
+
+	case 0x2A:
+		loadAccumulatorIndirectHLIncrement(memory, cpu.registers.pc, cpu.registers.aPtr(), &cpu.registers.hl)
+
+	case 0x3A:
+		loadAccumulatorIndirectHLDecrement(memory, cpu.registers.pc, cpu.registers.aPtr(), &cpu.registers.hl)
 
 	case 0xB7:
 		bitwiseOrRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.flags(), cpu.registers.a(), "A")
@@ -387,6 +409,65 @@ func (cpu *cpu) runInstruction(memory *memory) {
 		returnFromFunctionConditional(memory, &cpu.registers.pc, &cpu.registers.sp, !cpu.registers.flags().c(), "NC")
 	case 0xD8:
 		returnFromFunctionConditional(memory, &cpu.registers.pc, &cpu.registers.sp, cpu.registers.flags().c(), "C")
+
+	case 0x87:
+		addRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.a(), cpu.registers.flags(), "A")
+	case 0x80:
+		addRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.b(), cpu.registers.flags(), "B")
+	case 0x81:
+		addRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.c(), cpu.registers.flags(), "C")
+	case 0x82:
+		addRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.d(), cpu.registers.flags(), "D")
+	case 0x83:
+		addRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.e(), cpu.registers.flags(), "E")
+	case 0x84:
+		addRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.h(), cpu.registers.flags(), "H")
+	case 0x85:
+		addRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.l(), cpu.registers.flags(), "L")
+	case 0x86:
+		addIndirectHL(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.hl, cpu.registers.flags())
+	case 0xC6:
+		addImmediate(memory, &cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.flags())
+
+	case 0x97:
+		subtractRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.a(), cpu.registers.flags(), "A")
+	case 0x90:
+		subtractRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.b(), cpu.registers.flags(), "B")
+	case 0x91:
+		subtractRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.c(), cpu.registers.flags(), "C")
+	case 0x92:
+		subtractRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.d(), cpu.registers.flags(), "D")
+	case 0x93:
+		subtractRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.e(), cpu.registers.flags(), "E")
+	case 0x94:
+		subtractRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.h(), cpu.registers.flags(), "H")
+	case 0x95:
+		subtractRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.l(), cpu.registers.flags(), "L")
+	case 0x96:
+		subtractIndirectHL(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.hl, cpu.registers.flags())
+	case 0xD6:
+		subtractImmediate(memory, &cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.flags())
+
+	case 0x03:
+		increment16BitRegister(memory, cpu.registers.pc, &cpu.registers.bc, "BC")
+	case 0x13:
+		increment16BitRegister(memory, cpu.registers.pc, &cpu.registers.de, "DE")
+	case 0x23:
+		increment16BitRegister(memory, cpu.registers.pc, &cpu.registers.hl, "HL")
+	case 0x33:
+		increment16BitRegister(memory, cpu.registers.pc, &cpu.registers.sp, "SP")
+
+	case 0x0B:
+		decrement16BitRegister(memory, cpu.registers.pc, &cpu.registers.bc, "BC")
+	case 0x1B:
+		decrement16BitRegister(memory, cpu.registers.pc, &cpu.registers.de, "DE")
+	case 0x2B:
+		decrement16BitRegister(memory, cpu.registers.pc, &cpu.registers.hl, "HL")
+	case 0x3B:
+		decrement16BitRegister(memory, cpu.registers.pc, &cpu.registers.sp, "SP")
+
+	case 0xCD:
+		call(memory, &cpu.registers.pc, &cpu.registers.sp)
 
 	default:
 		log.Panicf("unknown opcode: 0x%02X", opcode)
