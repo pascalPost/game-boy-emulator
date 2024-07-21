@@ -22,7 +22,7 @@ func littleEndian16BitAddressOrData(data []byte, programCounter uint16, operand 
 		log.Fatal("unexpected number of bytes.")
 	}
 	value := toLittleEndian(data[programCounter : programCounter+2])
-	str := fmt.Sprintf(" 0x%X", value)
+	str := fmt.Sprintf("0x%X", value)
 	programCounter += 2
 	return programCounter, str
 }
@@ -31,7 +31,7 @@ func unsigned8BitData(data []byte, programCounter uint16, operand *Operand) (uin
 	if operand.Bytes != 1 {
 		log.Fatal("unexpected number of bytes.")
 	}
-	str := fmt.Sprintf(" 0x%.2X", data[programCounter])
+	str := fmt.Sprintf("0x%.2X", data[programCounter])
 	programCounter++
 	return programCounter, str
 }
@@ -50,42 +50,42 @@ func handleOperand(data []byte, programCounter uint16, operand *Operand) (uint16
 	switch operand.Name {
 	case "AF":
 		// 16-bit register (Accumulator & Flags)
-		operandStr += " AF"
+		operandStr += "AF"
 	case "A":
 		// 8-bit Hi part of AF
-		operandStr += " A"
+		operandStr += "A"
 	case "BC":
 		// 16-bit register
-		operandStr += " BC"
+		operandStr += "BC"
 	case "B":
 		// 8-bit Hi part of BC
-		operandStr += " B"
+		operandStr += "B"
 	case "C":
 		// 8-bit Lo part of BC
 		// or
 		// Condition code: Execute if C is set.
-		operandStr += " C"
+		operandStr += "C"
 	case "DE":
 		// 16-bit register
-		operandStr += " DE"
+		operandStr += "DE"
 	case "D":
 		// 8-bit Hi part of DE
-		operandStr += " D"
+		operandStr += "D"
 	case "E":
 		// 8-bit Lo part of DE
-		operandStr += " E"
+		operandStr += "E"
 	case "HL":
 		// 8-bit Hi part of HL
-		operandStr += " HL"
+		operandStr += "HL"
 	case "H":
 		// 8-bit Hi part of HL
-		operandStr += " H"
+		operandStr += "H"
 	case "L":
 		// 8-bit Lo part of HL
-		operandStr += " L"
+		operandStr += "L"
 	case "SP":
 		// 16-bit register (Stack Pointer)
-		operandStr += " SP"
+		operandStr += "SP"
 	case "n8":
 		// immediate 8-bit data
 		return unsigned8BitData(data, programCounter, operand)
@@ -103,29 +103,29 @@ func handleOperand(data []byte, programCounter uint16, operand *Operand) (uint16
 		return signed8BitData(data, programCounter, operand)
 	case "Z":
 		// Condition code: Execute if Z is set.
-		operandStr += " Z"
+		operandStr += "Z"
 	case "NZ":
 		// Condition code: Execute if Z is not set.
-		operandStr += " NZ"
+		operandStr += "NZ"
 	case "NC":
 		// Condition code: Execute if C is not set.
-		operandStr += " NC"
+		operandStr += "NC"
 	case "$00":
-		operandStr += " 0x00(H)"
+		operandStr += "0x00(H)"
 	case "$08":
-		operandStr += " 0x08(H)"
+		operandStr += "0x08(H)"
 	case "$10":
-		operandStr += " 0x10(H)"
+		operandStr += "0x10(H)"
 	case "$18":
-		operandStr += " 0x18(H)"
+		operandStr += "0x18(H)"
 	case "$20":
-		operandStr += " 0x20(H)"
+		operandStr += "0x20(H)"
 	case "$28":
-		operandStr += " 0x28(H)"
+		operandStr += "0x28(H)"
 	case "$30":
-		operandStr += " 0x30(H)"
+		operandStr += "0x30(H)"
 	case "$38":
-		operandStr += " 0x38(H)"
+		operandStr += "0x38(H)"
 	default:
 		log.Panicf("unknown operand name: {%s}", operand.Name)
 	}
@@ -134,12 +134,18 @@ func handleOperand(data []byte, programCounter uint16, operand *Operand) (uint16
 
 func readOperands(data []byte, programCounter uint16, operands []Operand) (uint16, string) {
 	operandStr := ""
-	for _, operand := range operands {
+	for i, operand := range operands {
 		newProgramCounter, str := handleOperand(data, programCounter, &operand)
 		programCounter = newProgramCounter
+		if !operand.Immediate {
+			str = fmt.Sprintf("[%s]", str)
+		}
+		if i < len(operands)-1 {
+			str = fmt.Sprintf("%s, ", str)
+		}
 		operandStr += str
 	}
-	return programCounter, operandStr
+	return programCounter, fmt.Sprintf(" %s", operandStr)
 }
 
 type Instruction struct {
