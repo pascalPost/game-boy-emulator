@@ -12,6 +12,8 @@ byte data and its ASCII representation. You can test, e.g. with this
 2) Parse the header and crate unit tests w.r.t., e.g., the Title, the Nintendo Logo and the Cartridge type.
 3) Parse the json file with all opcodes (https://gbdev.io/gb-opcodes/Opcodes.json).
 4) Write a disassembler. You may test with the snake ROM.
+5) Begin programming the emulator by adding instructions for the load sequence of snake.
+6) Add the graphics.
 
 ## Resources
 
