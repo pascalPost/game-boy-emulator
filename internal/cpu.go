@@ -190,6 +190,7 @@ func (r *registers) l() uint8 {
 
 type cpu struct {
 	registers registers
+	ime       bool // ime (interrupt master enable) flag indicating if interrupts are enabled (1) or disabled (0)
 }
 
 func (cpu *cpu) runInstruction(memory *memory) {
@@ -384,6 +385,9 @@ func (cpu *cpu) runInstruction(memory *memory) {
 	case 0x3A:
 		loadAccumulatorIndirectHLDecrement(memory, cpu.registers.pc, cpu.registers.aPtr(), &cpu.registers.hl)
 
+	case 0xF0:
+		loadAccumulatorDirectLeastSignificantByte(memory, &cpu.registers.pc, cpu.registers.aPtr())
+
 	case 0xB7:
 		bitwiseOrRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.flags(), cpu.registers.a(), "A")
 	case 0xB0:
@@ -466,8 +470,14 @@ func (cpu *cpu) runInstruction(memory *memory) {
 	case 0x3B:
 		decrement16BitRegister(memory, cpu.registers.pc, &cpu.registers.sp, "SP")
 
+	case 0xFE:
+		compareImmediate(memory, &cpu.registers.pc, cpu.registers.a(), cpu.registers.flags())
+
 	case 0xCD:
 		call(memory, &cpu.registers.pc, &cpu.registers.sp)
+
+	case 0xF3:
+		disableInterrupts(memory, cpu.registers.pc, &cpu.ime)
 
 	default:
 		log.Panicf("unknown opcode: 0x%02X", opcode)

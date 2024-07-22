@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"log/slog"
 )
 
@@ -165,6 +166,20 @@ func loadFromRegisterIndirect(memory *memory, programCounter uint16, registerDes
 	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
 }
 
+func loadAccumulatorDirectLeastSignificantByte(memory *memory, programCounter *uint16, registerA *uint8) {
+	pc := *programCounter
+	n8 := readUnsigned8(memory, programCounter)
+	mostSignificantByte := uint8(0xFF)
+	a16 := unsigned16(n8, mostSignificantByte)
+	a := memory.read(a16)
+	*registerA = a
+
+	instructionLengthInBytes := 2
+	instruction := fmt.Sprintf("LDH A, [0x%02X]", n8)
+	description := "LDH A, [n]: Load to the 8-bit A register, data from the address speciﬁed by the 8-bit immediate data n. The full 16-bit absolute address is obtained by setting the most signiﬁcant byte to 0xFF and the least signiﬁcant byte to the value of n, so the possible range is 0xFF00-0xFFFF."
+	logInstruction(memory, pc, instructionLengthInBytes, instruction, description)
+}
+
 func loadAccumulatorIndirectHLIncrement(memory *memory, programCounter uint16, registerA *uint8, registerHL *uint16) {
 	a8 := memory.read(*registerHL)
 	*registerA = a8
@@ -317,10 +332,8 @@ func carrySub(a, b uint8) bool {
 	return a < b
 }
 
-func subtractImpl(registerA *uint8, n8 uint8, flags flagsPtr) {
-	a := *registerA
-	result := a - n8
-	*registerA = result
+func subtractImpl(registerA uint8, n8 uint8, flags flagsPtr) uint8 {
+	result := registerA - n8
 
 	flags.clear()
 
@@ -328,16 +341,19 @@ func subtractImpl(registerA *uint8, n8 uint8, flags flagsPtr) {
 		flags.setZ()
 	}
 	flags.setN()
-	if halfCarrySub(a, n8) {
+	if halfCarrySub(registerA, n8) {
 		flags.setH()
 	}
-	if carrySub(a, n8) {
+	if carrySub(registerA, n8) {
 		flags.setC()
 	}
+
+	return result
 }
 
 func subtractRegister(memory *memory, programCounter uint16, registerA *uint8, register uint8, flags flagsPtr, registerName string) {
-	subtractImpl(registerA, register, flags)
+	res := subtractImpl(*registerA, register, flags)
+	*registerA = res
 	instructionLengthInBytes := 1
 	instruction := fmt.Sprintf("SUB %s", registerName)
 	description := "Subtracts from the 8-bit A register, the 8-bit register r, and stores the result back into the A register."
@@ -346,7 +362,8 @@ func subtractRegister(memory *memory, programCounter uint16, registerA *uint8, r
 
 func subtractIndirectHL(memory *memory, programCounter uint16, registerA *uint8, registerHL uint16, flags flagsPtr) {
 	n8 := memory.read(registerHL)
-	subtractImpl(registerA, n8, flags)
+	res := subtractImpl(*registerA, n8, flags)
+	*registerA = res
 
 	instructionLengthInBytes := 1
 	instruction := "SUB [HL]"
@@ -356,8 +373,11 @@ func subtractIndirectHL(memory *memory, programCounter uint16, registerA *uint8,
 
 func subtractImmediate(memory *memory, programCounter *uint16, registerA *uint8, flags flagsPtr) {
 	pc := *programCounter
+
 	n8 := readUnsigned8(memory, programCounter)
-	subtractImpl(registerA, n8, flags)
+	res := subtractImpl(*registerA, n8, flags)
+	*registerA = res
+
 	instructionLengthInBytes := 2
 	instruction := fmt.Sprintf("SUB 0x%02X", n8)
 	description := "Subtracts from the 8-bit A register, the immediate data n, and stores the result back into the A register."
@@ -380,4 +400,25 @@ func decrement16BitRegister(memory *memory, programCounter uint16, register *uin
 	instruction := fmt.Sprintf("DEC %s", registerName)
 	description := "DEC rr: Decrements data in the 16-bit register rr."
 	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
+func disableInterrupts(memory *memory, programCounter uint16, ime *bool) {
+	*ime = false
+
+	instructionLengthInBytes := 1
+	instruction := "DI"
+	description := "Disables interrupt handling by setting IME=0 and cancelling any scheduled eﬀects of the EI instruction if any."
+	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
+func compareImmediate(memory *memory, programCounter *uint16, registerA uint8, flags flagsPtr) {
+	pc := *programCounter
+
+	n8 := readUnsigned8(memory, programCounter)
+	subtractImpl(registerA, n8, flags)
+
+	instructionLengthInBytes := 2
+	instruction := spew.Sprintf("CP 0x%02X", n8)
+	description := "Subtracts from the 8-bit A register, the immediate data n, and updates ﬂags based on the result. This instruction is basically identical to SUB n, but does not update the A register."
+	logInstruction(memory, pc, instructionLengthInBytes, instruction, description)
 }
