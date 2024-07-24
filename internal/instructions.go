@@ -8,6 +8,12 @@ import (
 
 func logInstruction(memory *memory, programCounter uint16, instructionLengthInBytes int, instruction, description string) {
 	pcBegin := programCounter - 1
+
+	// handle prefixed instruction
+	if pcBegin > 0 && memory.data[pcBegin-1] == uint8(0xCB) {
+		pcBegin--
+	}
+
 	pcEnd := pcBegin + uint16(instructionLengthInBytes)
 	slog.Debug("Instruction", "PC", fmtHex16(pcBegin), "mem", fmt.Sprintf("0x% 2X", memory.data[pcBegin:pcEnd]), "instruction", instruction, "description", description)
 }
@@ -156,6 +162,19 @@ func loadFromAccumulatorDirect(memory *memory, programCounter *uint16, registerA
 	logInstruction(memory, pc, instructionLengthInBytes, instruction, description)
 }
 
+func loadFromAccumulatorDirectH(memory *memory, programCounter *uint16, registerA uint8) {
+	pc := *programCounter
+	n8 := readUnsigned8(memory, programCounter)
+	mostSignificantByte := uint8(0xFF)
+	a16 := unsigned16(n8, mostSignificantByte)
+	memory.write(a16, registerA)
+
+	instructionLengthInBytes := 2
+	instruction := fmt.Sprintf("LDH [%02X], A", n8)
+	description := "LDH [n8], A: Load to the address speciﬁed by the 8-bit immediate data n, data from the 8-bit A register. The full 16-bit absolute address is obtained by setting the most signiﬁcant byte to 0xFF and the least signiﬁcant byte to the value of n, so the possible range is 0xFF00-0xFFFF."
+	logInstruction(memory, pc, instructionLengthInBytes, instruction, description)
+}
+
 func loadFromRegisterIndirect(memory *memory, programCounter uint16, registerDest uint16, registerSource uint8, registerDestName, registerSourceName string) {
 	a16 := registerDest
 	memory.write(a16, registerSource)
@@ -180,6 +199,17 @@ func loadAccumulatorDirectLeastSignificantByte(memory *memory, programCounter *u
 	logInstruction(memory, pc, instructionLengthInBytes, instruction, description)
 }
 
+func loadFromAccumulatorIndirectHC(memory *memory, programCounter uint16, registerA uint8, registerC uint8) {
+	mostSignificantByte := uint8(0xFF)
+	a16 := unsigned16(registerC, mostSignificantByte)
+	memory.write(a16, registerA)
+
+	instructionLengthInBytes := 1
+	instruction := "LDH [C], A"
+	description := "LDH [C], A: Load to the address speciﬁed by the 8-bit C register, data from the 8-bit A register. The full 16-bit absolute address is obtained by setting the most signiﬁcant byte to 0xFF and the least signiﬁcant byte to the value of C, so the possible range is 0xFF00-0xFFFF."
+	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
 func loadAccumulatorIndirectHLIncrement(memory *memory, programCounter uint16, registerA *uint8, registerHL *uint16) {
 	a8 := memory.read(*registerHL)
 	*registerA = a8
@@ -188,6 +218,18 @@ func loadAccumulatorIndirectHLIncrement(memory *memory, programCounter uint16, r
 	instructionLengthInBytes := 1
 	instruction := "LDI A, [HL]"
 	description := "LDI A, [HL]: Load to the 8-bit A register, data from the absolute address speciﬁed by the 16-bit register HL. The value of HL is incremented after the memory read."
+	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
+func loadFromAccumulatorIndirectHLDecrement(memory *memory, programCounter uint16, registerA uint8, registerHL *uint16) {
+	n8 := registerA
+	a16 := *registerHL
+	memory.write(a16, n8)
+	*registerHL--
+
+	instructionLengthInBytes := 1
+	instruction := "LDD [HL], A"
+	description := "LDD [HL], A: Load to the absolute address speciﬁed by the 16-bit register HL, data from the 8-bit A register. The value of HL is decremented after the memory write."
 	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
 }
 
@@ -258,14 +300,29 @@ func bitwiseOrRegister(memory *memory, programCounter uint16, registerA *uint8, 
 	result := *registerA | register
 	*registerA = result
 
-	flags.clear()
+	flags.clearAll()
 	if result == 0 {
 		flags.setZ()
 	}
 
 	instructionLengthInBytes := 1
-	instruction := fmt.Sprintf("OR A %s", registerName)
+	instruction := fmt.Sprintf("OR A, %s", registerName)
 	description := "Performs a bitwise OR operation between the 8-bit A register and the 8-bit register r, and stores the result back into the A register."
+	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
+func bitwiseXorRegister(memory *memory, programCounter uint16, registerA *uint8, flags flagsPtr, register uint8, registerName string) {
+	result := *registerA ^ register
+	*registerA = result
+
+	flags.clearAll()
+	if result == 0 {
+		flags.setZ()
+	}
+
+	instructionLengthInBytes := 1
+	instruction := fmt.Sprintf("XOR A, %s", registerName)
+	description := "XOR r: Performs a bitwise XOR operation between the 8-bit A register and the 8-bit register r, and stores the result back into the A register."
 	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
 }
 
@@ -282,7 +339,7 @@ func addImpl(registerA *uint8, n8 uint8, flags flagsPtr) {
 	result := a + n8
 	*registerA = result
 
-	flags.clear()
+	flags.clearAll()
 
 	if result == 0 {
 		flags.setZ()
@@ -335,7 +392,7 @@ func carrySub(a, b uint8) bool {
 func subtractImpl(registerA uint8, n8 uint8, flags flagsPtr) uint8 {
 	result := registerA - n8
 
-	flags.clear()
+	flags.clearAll()
 
 	if result == 0 {
 		flags.setZ()
@@ -384,6 +441,28 @@ func subtractImmediate(memory *memory, programCounter *uint16, registerA *uint8,
 	logInstruction(memory, pc, instructionLengthInBytes, instruction, description)
 }
 
+func incrementRegister(memory *memory, programCounter uint16, register *uint8, flags flagsPtr, registerName string) {
+	old := *register
+	*register = old + 1
+
+	if *register == 0 {
+		flags.setZ()
+	} else {
+		flags.clearZ()
+	}
+	flags.clearN()
+	if halfCarryAdd(old, 1) {
+		flags.setH()
+	} else {
+		flags.clearH()
+	}
+
+	instructionLengthInBytes := 1
+	instruction := fmt.Sprintf("INC %s", registerName)
+	description := "INC rr: Increments data in the 16-bit register rr."
+	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
 func increment16BitRegister(memory *memory, programCounter uint16, register *uint16, registerName string) {
 	*register++
 
@@ -421,4 +500,24 @@ func compareImmediate(memory *memory, programCounter *uint16, registerA uint8, f
 	instruction := spew.Sprintf("CP 0x%02X", n8)
 	description := "Subtracts from the 8-bit A register, the immediate data n, and updates ﬂags based on the result. This instruction is basically identical to SUB n, but does not update the A register."
 	logInstruction(memory, pc, instructionLengthInBytes, instruction, description)
+}
+
+func testBitRegister(memory *memory, programCounter uint16, flags flagsPtr, bitNumber uint8, register uint8, registerName string) {
+	bitSet, err := isBitSet(register, bitNumber)
+	if err != nil {
+		panic(err)
+	}
+
+	if bitSet {
+		flags.clearZ()
+	} else {
+		flags.setZ()
+	}
+	flags.clearN()
+	flags.setH()
+
+	instructionLengthInBytes := 1
+	instruction := spew.Sprintf("BIT %d, %s", bitNumber, registerName)
+	description := "BIT b, r: Test bit b n register r."
+	logInstruction(memory, programCounter, instructionLengthInBytes, instruction, description)
 }

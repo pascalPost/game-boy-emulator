@@ -1,57 +1,41 @@
 package internal
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"log/slog"
 	"unsafe"
 )
 
-func isBit7Set(value uint8) bool {
-	return (value & 0b1000_0000) != 0
+func bitNumberError() error {
+	return errors.New("A 8bit value has only 8 bits. I.e., the maximal bit to specify is bit number 7")
 }
 
-func isBit6Set(value uint8) bool {
-	return (value & 0b0100_0000) != 0
+func isBitSet(value uint8, bitNumber uint8) (bool, error) {
+	if bitNumber > 7 {
+		return false, bitNumberError()
+	}
+	mask := uint8(0b0000_0001) << bitNumber
+	return (value & mask) != 0, nil
 }
 
-func isBit5Set(value uint8) bool {
-	return (value & 0b0010_0000) != 0
+func setBit(value *uint8, bitNumber uint8) error {
+	if bitNumber > 7 {
+		return bitNumberError()
+	}
+	mask := uint8(0b0000_0001) << bitNumber
+	*value = *value | mask
+	return nil
 }
 
-func isBit4Set(value uint8) bool {
-	return (value & 0b0001_0000) != 0
-}
-
-func setBit7(value *uint8) {
-	*value = *value | 0b1000_0000
-}
-
-func setBit6(value *uint8) {
-	*value = *value | 0b0100_0000
-}
-
-func setBit5(value *uint8) {
-	*value = *value | 0b0010_0000
-}
-
-func setBit4(value *uint8) {
-	*value = *value | 0b0001_0000
-}
-
-func clearBit7(value *uint8) {
-	*value = *value & 0b0111_1111
-}
-
-func clearBit6(value *uint8) {
-	*value = *value & 0b1011_1111
-}
-
-func clearBit5(value *uint8) {
-	*value = *value & 0b1101_1111
-}
-
-func clearBit4(value *uint8) {
-	*value = *value & 0b1110_1111
+func clearBit(value *uint8, bitNumber uint8) error {
+	if bitNumber > 7 {
+		return bitNumberError()
+	}
+	mask := uint8(0b1111_1111) ^ (uint8(0b0000_0001) << bitNumber)
+	*value = *value & mask
+	return nil
 }
 
 func clearBits7to4(value *uint8) {
@@ -82,40 +66,64 @@ type flagsPtr struct {
 	data *uint8
 }
 
-func (f flagsPtr) clear() {
+func (f flagsPtr) clearAll() {
 	clearBits7to4(f.data)
 }
 
+func (f flagsPtr) clearZ() {
+	_ = clearBit(f.data, 7)
+}
+
+func (f flagsPtr) clearN() {
+	_ = clearBit(f.data, 6)
+}
+
+func (f flagsPtr) clearH() {
+	_ = clearBit(f.data, 5)
+}
+
+func (f flagsPtr) clearC() {
+	_ = clearBit(f.data, 4)
+}
+
 func (f flagsPtr) setZ() {
-	setBit7(f.data)
+	_ = setBit(f.data, 7)
 }
 
 func (f flagsPtr) setN() {
-	setBit6(f.data)
+	_ = setBit(f.data, 6)
 }
 
 func (f flagsPtr) setH() {
-	setBit5(f.data)
+	_ = setBit(f.data, 5)
 }
 
 func (f flagsPtr) setC() {
-	setBit4(f.data)
+	_ = setBit(f.data, 4)
+}
+
+func checkBit(value uint8, bitNumber uint8) bool {
+	res, err := isBitSet(value, bitNumber)
+	if err != nil {
+		panic(err)
+	}
+	return res
 }
 
 func (f flagsPtr) z() bool {
-	return isBit7Set(*f.data)
+	return checkBit(*f.data, 7)
 }
 
 func (f flagsPtr) n() bool {
-	return isBit6Set(*f.data)
+	return checkBit(*f.data, 6)
 }
 
 func (f flagsPtr) h() bool {
-	return isBit5Set(*f.data)
+	return checkBit(*f.data, 5)
 }
 
 func (f flagsPtr) c() bool {
-	return isBit4Set(*f.data)
+	return checkBit(*f.data, 4)
 }
 
 type registers struct {
@@ -195,11 +203,16 @@ type cpu struct {
 
 func (cpu *cpu) runInstruction(memory *memory) {
 	opcode := memory.read(cpu.registers.pc)
-	slog.Debug("Decode instruction", "PC", fmtHex16(cpu.registers.pc), "Opcode", fmtHex8(opcode))
+	if opcode != uint8(0xCB) {
+		slog.Debug("Decode instruction", "PC", fmtHex16(cpu.registers.pc), "Opcode", fmtHex8(opcode))
+	}
 	cpu.registers.pc++
 
 	// instead of a switch we could also read from an array/slice at the opcode position
 	switch opcode {
+	case 0xCB:
+		cpu.runPrefixedInstruction(memory)
+
 	case 0x00:
 		nop(cpu.registers.pc)
 
@@ -244,6 +257,8 @@ func (cpu *cpu) runInstruction(memory *memory) {
 		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.bPtr(), cpu.registers.b(), "B", "L")
 	case 0x46:
 		load8BitToRegisterFromAddressInRegister(memory, cpu.registers.pc, cpu.registers.bPtr(), cpu.registers.hl, "B", "HL")
+	case 0x47:
+		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.bPtr(), cpu.registers.a(), "B", "A")
 
 	case 0x48:
 		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.cPtr(), cpu.registers.b(), "C", "B")
@@ -259,6 +274,8 @@ func (cpu *cpu) runInstruction(memory *memory) {
 		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.cPtr(), cpu.registers.l(), "C", "L")
 	case 0x4E:
 		load8BitToRegisterFromAddressInRegister(memory, cpu.registers.pc, cpu.registers.cPtr(), cpu.registers.hl, "C", "HL")
+	case 0x4F:
+		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.cPtr(), cpu.registers.a(), "C", "A")
 
 	case 0x50:
 		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.dPtr(), cpu.registers.b(), "D", "B")
@@ -274,6 +291,8 @@ func (cpu *cpu) runInstruction(memory *memory) {
 		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.dPtr(), cpu.registers.l(), "D", "L")
 	case 0x56:
 		load8BitToRegisterFromAddressInRegister(memory, cpu.registers.pc, cpu.registers.dPtr(), cpu.registers.hl, "D", "HL")
+	case 0x57:
+		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.dPtr(), cpu.registers.a(), "D", "A")
 
 	case 0x58:
 		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.ePtr(), cpu.registers.b(), "E", "B")
@@ -289,6 +308,8 @@ func (cpu *cpu) runInstruction(memory *memory) {
 		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.ePtr(), cpu.registers.l(), "E", "L")
 	case 0x5E:
 		load8BitToRegisterFromAddressInRegister(memory, cpu.registers.pc, cpu.registers.ePtr(), cpu.registers.hl, "E", "HL")
+	case 0x5F:
+		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.ePtr(), cpu.registers.a(), "E", "A")
 
 	case 0x60:
 		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.hPtr(), cpu.registers.b(), "H", "B")
@@ -304,6 +325,8 @@ func (cpu *cpu) runInstruction(memory *memory) {
 		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.hPtr(), cpu.registers.l(), "H", "L")
 	case 0x66:
 		load8BitToRegisterFromAddressInRegister(memory, cpu.registers.pc, cpu.registers.hPtr(), cpu.registers.hl, "H", "HL")
+	case 0x67:
+		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.hPtr(), cpu.registers.a(), "H", "A")
 
 	case 0x68:
 		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.lPtr(), cpu.registers.b(), "L", "B")
@@ -319,6 +342,8 @@ func (cpu *cpu) runInstruction(memory *memory) {
 		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.lPtr(), cpu.registers.l(), "L", "L")
 	case 0x6E:
 		load8BitToRegisterFromAddressInRegister(memory, cpu.registers.pc, cpu.registers.lPtr(), cpu.registers.hl, "L", "HL")
+	case 0x6F:
+		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.lPtr(), cpu.registers.a(), "L", "A")
 
 	case 0x70:
 		load8BitToAddressInHLFromRegister(memory, cpu.registers.pc, cpu.registers.bPtr(), cpu.registers.hl, "B")
@@ -335,6 +360,7 @@ func (cpu *cpu) runInstruction(memory *memory) {
 
 	case 0x7F:
 		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.a(), "A", "A")
+
 	case 0x78:
 		load8BitToRegisterFromRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.b(), "A", "B")
 	case 0x79:
@@ -376,11 +402,19 @@ func (cpu *cpu) runInstruction(memory *memory) {
 		loadFromRegisterIndirect(memory, cpu.registers.pc, cpu.registers.de, cpu.registers.a(), "DE", "A")
 	case 0x77:
 		loadFromRegisterIndirect(memory, cpu.registers.pc, cpu.registers.hl, cpu.registers.a(), "HL", "A")
+	case 0xE0:
+		loadFromAccumulatorDirectH(memory, &cpu.registers.pc, cpu.registers.a())
 	case 0xEA:
 		loadFromAccumulatorDirect(memory, &cpu.registers.pc, cpu.registers.a())
 
+	case 0xE2:
+		loadFromAccumulatorIndirectHC(memory, cpu.registers.pc, cpu.registers.a(), cpu.registers.c())
+
 	case 0x2A:
 		loadAccumulatorIndirectHLIncrement(memory, cpu.registers.pc, cpu.registers.aPtr(), &cpu.registers.hl)
+
+	case 0x32:
+		loadFromAccumulatorIndirectHLDecrement(memory, cpu.registers.pc, cpu.registers.a(), &cpu.registers.hl)
 
 	case 0x3A:
 		loadAccumulatorIndirectHLDecrement(memory, cpu.registers.pc, cpu.registers.aPtr(), &cpu.registers.hl)
@@ -402,6 +436,21 @@ func (cpu *cpu) runInstruction(memory *memory) {
 		bitwiseOrRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.flags(), cpu.registers.h(), "H")
 	case 0xB5:
 		bitwiseOrRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.flags(), cpu.registers.l(), "L")
+
+	case 0xAF:
+		bitwiseXorRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.flags(), cpu.registers.a(), "A")
+	case 0xA8:
+		bitwiseXorRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.flags(), cpu.registers.b(), "B")
+	case 0xA9:
+		bitwiseXorRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.flags(), cpu.registers.c(), "C")
+	case 0xAA:
+		bitwiseXorRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.flags(), cpu.registers.d(), "D")
+	case 0xAB:
+		bitwiseXorRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.flags(), cpu.registers.e(), "E")
+	case 0xAC:
+		bitwiseXorRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.flags(), cpu.registers.h(), "H")
+	case 0xAD:
+		bitwiseXorRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.flags(), cpu.registers.l(), "L")
 
 	case 0xC9:
 		returnFromFunction(memory, &cpu.registers.pc, &cpu.registers.sp)
@@ -452,6 +501,21 @@ func (cpu *cpu) runInstruction(memory *memory) {
 	case 0xD6:
 		subtractImmediate(memory, &cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.flags())
 
+	case 0x3C:
+		incrementRegister(memory, cpu.registers.pc, cpu.registers.aPtr(), cpu.registers.flags(), "A")
+	case 0x04:
+		incrementRegister(memory, cpu.registers.pc, cpu.registers.bPtr(), cpu.registers.flags(), "B")
+	case 0x0C:
+		incrementRegister(memory, cpu.registers.pc, cpu.registers.cPtr(), cpu.registers.flags(), "C")
+	case 0x14:
+		incrementRegister(memory, cpu.registers.pc, cpu.registers.dPtr(), cpu.registers.flags(), "D")
+	case 0x1C:
+		incrementRegister(memory, cpu.registers.pc, cpu.registers.ePtr(), cpu.registers.flags(), "E")
+	case 0x24:
+		incrementRegister(memory, cpu.registers.pc, cpu.registers.hPtr(), cpu.registers.flags(), "H")
+	case 0x2C:
+		incrementRegister(memory, cpu.registers.pc, cpu.registers.lPtr(), cpu.registers.flags(), "L")
+
 	case 0x03:
 		increment16BitRegister(memory, cpu.registers.pc, &cpu.registers.bc, "BC")
 	case 0x13:
@@ -481,5 +545,136 @@ func (cpu *cpu) runInstruction(memory *memory) {
 
 	default:
 		log.Panicf("unknown opcode: 0x%02X", opcode)
+	}
+}
+
+func (cpu *cpu) runPrefixedInstruction(memory *memory) {
+	opcode := memory.read(cpu.registers.pc)
+	slog.Debug("Decode prefixed instruction", "PC", fmtHex16(cpu.registers.pc), "Opcode", fmt.Sprintf("0x%02X 0x%02X", 0xCB, opcode))
+	cpu.registers.pc++
+
+	switch opcode {
+	case 0x40:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 0, cpu.registers.b(), "B")
+	case 0x41:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 0, cpu.registers.c(), "C")
+	case 0x42:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 0, cpu.registers.d(), "D")
+	case 0x43:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 0, cpu.registers.e(), "E")
+	case 0x44:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 0, cpu.registers.h(), "H")
+	case 0x45:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 0, cpu.registers.l(), "L")
+	case 0x47:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 0, cpu.registers.a(), "A")
+
+	case 0x48:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 1, cpu.registers.b(), "B")
+	case 0x49:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 1, cpu.registers.c(), "C")
+	case 0x4A:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 1, cpu.registers.d(), "D")
+	case 0x4B:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 1, cpu.registers.e(), "E")
+	case 0x4C:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 1, cpu.registers.h(), "H")
+	case 0x4D:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 1, cpu.registers.l(), "L")
+	case 0x4F:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 1, cpu.registers.a(), "A")
+
+	case 0x50:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 2, cpu.registers.b(), "B")
+	case 0x51:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 2, cpu.registers.c(), "C")
+	case 0x52:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 2, cpu.registers.d(), "D")
+	case 0x53:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 2, cpu.registers.e(), "E")
+	case 0x54:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 2, cpu.registers.h(), "H")
+	case 0x55:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 2, cpu.registers.l(), "L")
+	case 0x57:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 2, cpu.registers.a(), "A")
+
+	case 0x58:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 3, cpu.registers.b(), "B")
+	case 0x59:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 3, cpu.registers.c(), "C")
+	case 0x5A:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 3, cpu.registers.d(), "D")
+	case 0x5B:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 3, cpu.registers.e(), "E")
+	case 0x5C:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 3, cpu.registers.h(), "H")
+	case 0x5D:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 3, cpu.registers.l(), "L")
+	case 0x5F:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 3, cpu.registers.a(), "A")
+
+	case 0x60:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 4, cpu.registers.b(), "B")
+	case 0x61:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 4, cpu.registers.c(), "C")
+	case 0x62:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 4, cpu.registers.d(), "D")
+	case 0x63:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 4, cpu.registers.e(), "E")
+	case 0x64:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 4, cpu.registers.h(), "H")
+	case 0x65:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 4, cpu.registers.l(), "L")
+	case 0x67:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 4, cpu.registers.a(), "A")
+
+	case 0x68:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 5, cpu.registers.b(), "B")
+	case 0x69:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 5, cpu.registers.c(), "C")
+	case 0x6A:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 5, cpu.registers.d(), "D")
+	case 0x6B:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 5, cpu.registers.e(), "E")
+	case 0x6C:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 5, cpu.registers.h(), "H")
+	case 0x6D:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 5, cpu.registers.l(), "L")
+	case 0x6F:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 5, cpu.registers.a(), "A")
+
+	case 0x70:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 6, cpu.registers.b(), "B")
+	case 0x71:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 6, cpu.registers.c(), "C")
+	case 0x72:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 6, cpu.registers.d(), "D")
+	case 0x73:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 6, cpu.registers.e(), "E")
+	case 0x74:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 6, cpu.registers.h(), "H")
+	case 0x75:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 6, cpu.registers.l(), "L")
+	case 0x77:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 6, cpu.registers.a(), "A")
+
+	case 0x78:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 7, cpu.registers.b(), "B")
+	case 0x79:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 7, cpu.registers.c(), "C")
+	case 0x7A:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 7, cpu.registers.d(), "D")
+	case 0x7B:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 7, cpu.registers.e(), "E")
+	case 0x7C:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 7, cpu.registers.h(), "H")
+	case 0x7D:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 7, cpu.registers.l(), "L")
+	case 0x7F:
+		testBitRegister(memory, cpu.registers.pc, cpu.registers.flags(), 7, cpu.registers.a(), "A")
+
+	default:
+		log.Panicf("unknown prefixed opcode: 0x%02X", opcode)
 	}
 }

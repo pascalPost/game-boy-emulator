@@ -48,6 +48,22 @@ func signed8BitData(data []byte, programCounter uint16, operand *Operand) (uint1
 func handleOperand(data []byte, programCounter uint16, operand *Operand) (uint16, string) {
 	operandStr := ""
 	switch operand.Name {
+	case "0":
+		operandStr += "0"
+	case "1":
+		operandStr += "1"
+	case "2":
+		operandStr += "2"
+	case "3":
+		operandStr += "3"
+	case "4":
+		operandStr += "4"
+	case "5":
+		operandStr += "5"
+	case "6":
+		operandStr += "6"
+	case "7":
+		operandStr += "7"
 	case "AF":
 		// 16-bit register (Accumulator & Flags)
 		operandStr += "AF"
@@ -162,7 +178,7 @@ func parseOpcode(data []byte, programCounter uint16, list *OpcodeList) (uint16, 
 		opcode = list.UnPrefixed[ByteKey{data[programCounter]}]
 	} else {
 		programCounter++
-		opcode = list.UnPrefixed[ByteKey{data[programCounter]}]
+		opcode = list.CbPrefixed[ByteKey{data[programCounter]}]
 	}
 	programCounter++
 	return programCounter, opcode
