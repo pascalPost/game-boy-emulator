@@ -26,12 +26,11 @@ func NewGameBoy() *GameBoy {
 	return &GameBoy{}
 }
 
-func (gb *GameBoy) Run() {
+func (gb *GameBoy) Run(startAddress uint16) {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 
-	const headerEntryAddress uint16 = 0x0100
 	const initialStackPointerAddress uint16 = 0xFFFE
-	gb.cpu.registers.pc = headerEntryAddress
+	gb.cpu.registers.pc = startAddress
 	gb.cpu.registers.sp = initialStackPointerAddress
 
 	for {

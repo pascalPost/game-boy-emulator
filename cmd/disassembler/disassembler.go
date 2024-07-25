@@ -1,14 +1,39 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"github.com/pascalPost/game-boy-emulator/cmd"
 	"github.com/pascalPost/game-boy-emulator/internal"
 	"io"
 	"log"
 	"log/slog"
 	"os"
 )
+
+func parseArguments() (string, uint16) {
+	help := flag.Bool("h", false, "Display this help message and exit")
+	startAddress := flag.Uint("start", 0x0150, "Specify the address to start from (defaults to 0x0150)")
+
+	flag.Parse()
+
+	if *help {
+		printHelp()
+		os.Exit(0)
+	}
+	if flag.NArg() == 0 {
+		printHelp()
+		os.Exit(1)
+	}
+
+	return flag.Arg(0), uint16(*startAddress)
+}
+
+func printHelp() {
+	fmt.Println("Usage: disassembler [OPTIONS] FILE")
+	fmt.Println("Options:")
+	fmt.Println("  -h       Display this help message and exit")
+	fmt.Println("  -start   Specify the start address")
+}
 
 func printInstructions(data []byte, instructions []internal.Instruction, offset uint16) {
 	for _, instruction := range instructions {
@@ -24,7 +49,7 @@ func printInstructions(data []byte, instructions []internal.Instruction, offset 
 }
 
 func main() {
-	fileName := cmd.FileNameFromArguments("disassembler")
+	fileName, startAddress := parseArguments()
 
 	opcodes, err := internal.ParseOpcodes()
 	if err != nil {
@@ -47,19 +72,6 @@ func main() {
 		slog.Error("error in reading rom")
 	}
 
-	fmt.Printf("Header entry point:\n")
-
-	header, err := internal.NewHeader(data)
-	if err != nil {
-		log.Panicf("error on reading header: %s", err)
-	}
-	entryOffset := uint16(0x0100)
-	entry := header.Raw.EntryPoint
-	instructions := internal.Disassemble(entry[:], 0, opcodes)
-	printInstructions(data, instructions, entryOffset)
-
-	fmt.Printf("\n")
-	fmt.Printf("Read program:\n")
-	instructions = internal.Disassemble(data, 0x0150, opcodes)
+	instructions := internal.Disassemble(data, startAddress, opcodes)
 	printInstructions(data, instructions, 0)
 }

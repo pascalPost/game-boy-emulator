@@ -9,8 +9,10 @@ import (
 	"strings"
 )
 
-const windowWidth = 800
-const windowHeight = 600
+func getSize() []int {
+	const scale = 5
+	return []int{160 * scale, 144 * scale}
+}
 
 const (
 	vertexShaderSource = `
@@ -30,14 +32,6 @@ const (
 	` + "\x00"
 )
 
-var (
-	triangle = []float32{
-		0, 0.5, 0, // top
-		-0.5, -0.5, 0, // left
-		0.5, -0.5, 0, // right
-	}
-)
-
 func main() {
 	runtime.LockOSThread()
 
@@ -46,9 +40,10 @@ func main() {
 
 	program := initOpenGL()
 
-	vao := makeVao(triangle)
+	disp := newDisplay()
+
 	for !window.ShouldClose() {
-		draw(vao, window, program)
+		draw(disp, window, program)
 	}
 }
 
@@ -75,29 +70,11 @@ func compileShader(source string, shaderType uint32) (uint32, error) {
 	return shader, nil
 }
 
-// makeVao initializes and returns a vertex array from the points provided.
-func makeVao(points []float32) uint32 {
-	var vbo uint32
-	gl.GenBuffers(1, &vbo)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	gl.BufferData(gl.ARRAY_BUFFER, 4*len(points), gl.Ptr(points), gl.STATIC_DRAW)
-
-	var vao uint32
-	gl.GenVertexArrays(1, &vao)
-	gl.BindVertexArray(vao)
-	gl.EnableVertexAttribArray(0)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 0, nil)
-
-	return vao
-}
-
-func draw(vao uint32, window *glfw.Window, program uint32) {
+func draw(disp *display, window *glfw.Window, program uint32) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.UseProgram(program)
 
-	gl.BindVertexArray(vao)
-	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(triangle)/3))
+	disp.draw()
 
 	glfw.PollEvents()
 	window.SwapBuffers()
@@ -138,7 +115,8 @@ func initGlfw() *glfw.Window {
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
 
-	window, err := glfw.CreateWindow(windowWidth, windowHeight, "game-boy-emulator", nil, nil)
+	size := getSize()
+	window, err := glfw.CreateWindow(size[0], size[1], "game-boy-emulator", nil, nil)
 	if err != nil {
 		panic(err)
 	}
