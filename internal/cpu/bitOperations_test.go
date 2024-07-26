@@ -1,4 +1,4 @@
-package internal
+package cpu
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -8,11 +8,11 @@ import (
 func TestRegisterSplit(t *testing.T) {
 	var num uint16 = 0x1234
 
-	assert.Equal(t, uint8(0x12), highPart(num))
-	assert.Equal(t, uint8(0x34), lowPart(num))
+	assert.Equal(t, uint8(0x12), HighPart(num))
+	assert.Equal(t, uint8(0x34), LowPart(num))
 
-	assert.Equal(t, uint8(0x12), *highPartPtr(&num))
-	assert.Equal(t, uint8(0x34), *lowPartPtr(&num))
+	assert.Equal(t, uint8(0x12), *HighPartPtr(&num))
+	assert.Equal(t, uint8(0x34), *LowPartPtr(&num))
 }
 
 func TestIsBitSet(t *testing.T) {
@@ -27,13 +27,13 @@ func TestIsBitSet(t *testing.T) {
 
 	for _, test := range tests {
 		for _, bit := range test.bit {
-			res, err := isBitSet(test.num, bit)
+			res, err := IsBitSet(test.num, bit)
 			assert.NoError(t, err)
 			assert.Equal(t, test.result, res)
 		}
 	}
 
-	_, err := isBitSet(0b1111_1111, 8)
+	_, err := IsBitSet(0b1111_1111, 8)
 	assert.Error(t, err)
 }
 

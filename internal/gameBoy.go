@@ -1,13 +1,15 @@
 package internal
 
 import (
+	"github.com/pascalPost/game-boy-emulator/internal/cpu"
+	"github.com/pascalPost/game-boy-emulator/internal/cpu/instructions"
 	"log/slog"
 	"os"
 )
 
 type GameBoy struct {
-	cpu    cpu
-	memory memory
+	cpu    cpu.Cpu
+	memory cpu.Memory
 }
 
 func (gb *GameBoy) LoadCartridge(path string) error {
@@ -17,7 +19,7 @@ func (gb *GameBoy) LoadCartridge(path string) error {
 		return err
 	}
 
-	copy(gb.memory.data[0:], rom)
+	copy(gb.memory.Data[0:], rom)
 
 	return nil
 }
@@ -30,10 +32,10 @@ func (gb *GameBoy) Run(startAddress uint16) {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 
 	const initialStackPointerAddress uint16 = 0xFFFE
-	gb.cpu.registers.pc = startAddress
-	gb.cpu.registers.sp = initialStackPointerAddress
+	gb.cpu.Registers.PC = startAddress
+	gb.cpu.Registers.SP = initialStackPointerAddress
 
 	for {
-		gb.cpu.runInstruction(&gb.memory)
+		instructions.RunInstruction(&gb.cpu, &gb.memory)
 	}
 }
