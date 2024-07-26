@@ -3,6 +3,7 @@ package instructions
 import (
 	"fmt"
 	. "github.com/pascalPost/game-boy-emulator/internal/cpu"
+	"github.com/pascalPost/game-boy-emulator/internal/cpu/instructions/alu"
 	"github.com/pascalPost/game-boy-emulator/internal/cpu/instructions/rotate"
 	"log"
 	"log/slog"
@@ -230,34 +231,34 @@ func RunInstruction(cpu *Cpu, memory *Memory) {
 		LoadAccumulatorDirectLeastSignificantByte(memory, &cpu.Registers.PC, cpu.Registers.APtr())
 
 	case 0xB7:
-		BitwiseOrRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.A(), "A")
+		alu.BitwiseOrRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.A(), "A")
 	case 0xB0:
-		BitwiseOrRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.B(), "B")
+		alu.BitwiseOrRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.B(), "B")
 	case 0xB1:
-		BitwiseOrRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.C(), "C")
+		alu.BitwiseOrRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.C(), "C")
 	case 0xB2:
-		BitwiseOrRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.D(), "D")
+		alu.BitwiseOrRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.D(), "D")
 	case 0xB3:
-		BitwiseOrRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.E(), "E")
+		alu.BitwiseOrRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.E(), "E")
 	case 0xB4:
-		BitwiseOrRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.H(), "H")
+		alu.BitwiseOrRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.H(), "H")
 	case 0xB5:
-		BitwiseOrRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.L(), "L")
+		alu.BitwiseOrRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.L(), "L")
 
 	case 0xAF:
-		BitwiseXorRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.A(), "A")
+		alu.BitwiseXorRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.A(), "A")
 	case 0xA8:
-		BitwiseXorRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.B(), "B")
+		alu.BitwiseXorRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.B(), "B")
 	case 0xA9:
-		BitwiseXorRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.C(), "C")
+		alu.BitwiseXorRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.C(), "C")
 	case 0xAA:
-		BitwiseXorRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.D(), "D")
+		alu.BitwiseXorRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.D(), "D")
 	case 0xAB:
-		BitwiseXorRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.E(), "E")
+		alu.BitwiseXorRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.E(), "E")
 	case 0xAC:
-		BitwiseXorRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.H(), "H")
+		alu.BitwiseXorRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.H(), "H")
 	case 0xAD:
-		BitwiseXorRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.L(), "L")
+		alu.BitwiseXorRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), cpu.Registers.L(), "L")
 
 	case 0xC9:
 		ReturnFromFunction(memory, &cpu.Registers.PC, &cpu.Registers.SP)
@@ -271,78 +272,78 @@ func RunInstruction(cpu *Cpu, memory *Memory) {
 		ReturnFromFunctionConditional(memory, &cpu.Registers.PC, &cpu.Registers.SP, cpu.Registers.Flags().C(), "C")
 
 	case 0x87:
-		AddRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.A(), cpu.Registers.Flags(), "A")
+		alu.AddRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.A(), cpu.Registers.Flags(), "A")
 	case 0x80:
-		AddRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.B(), cpu.Registers.Flags(), "B")
+		alu.AddRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.B(), cpu.Registers.Flags(), "B")
 	case 0x81:
-		AddRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.C(), cpu.Registers.Flags(), "C")
+		alu.AddRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.C(), cpu.Registers.Flags(), "C")
 	case 0x82:
-		AddRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.D(), cpu.Registers.Flags(), "D")
+		alu.AddRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.D(), cpu.Registers.Flags(), "D")
 	case 0x83:
-		AddRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.E(), cpu.Registers.Flags(), "E")
+		alu.AddRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.E(), cpu.Registers.Flags(), "E")
 	case 0x84:
-		AddRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.H(), cpu.Registers.Flags(), "H")
+		alu.AddRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.H(), cpu.Registers.Flags(), "H")
 	case 0x85:
-		AddRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.L(), cpu.Registers.Flags(), "L")
+		alu.AddRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.L(), cpu.Registers.Flags(), "L")
 	case 0x86:
-		AddIndirectHL(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.HL, cpu.Registers.Flags())
+		alu.AddIndirectHL(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.HL, cpu.Registers.Flags())
 	case 0xC6:
-		AddImmediate(memory, &cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags())
+		alu.AddImmediate(memory, &cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags())
 
 	case 0x97:
-		SubtractRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.A(), cpu.Registers.Flags(), "A")
+		alu.SubtractRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.A(), cpu.Registers.Flags(), "A")
 	case 0x90:
-		SubtractRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.B(), cpu.Registers.Flags(), "B")
+		alu.SubtractRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.B(), cpu.Registers.Flags(), "B")
 	case 0x91:
-		SubtractRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.C(), cpu.Registers.Flags(), "C")
+		alu.SubtractRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.C(), cpu.Registers.Flags(), "C")
 	case 0x92:
-		SubtractRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.D(), cpu.Registers.Flags(), "D")
+		alu.SubtractRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.D(), cpu.Registers.Flags(), "D")
 	case 0x93:
-		SubtractRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.E(), cpu.Registers.Flags(), "E")
+		alu.SubtractRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.E(), cpu.Registers.Flags(), "E")
 	case 0x94:
-		SubtractRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.H(), cpu.Registers.Flags(), "H")
+		alu.SubtractRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.H(), cpu.Registers.Flags(), "H")
 	case 0x95:
-		SubtractRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.L(), cpu.Registers.Flags(), "L")
+		alu.SubtractRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.L(), cpu.Registers.Flags(), "L")
 	case 0x96:
-		SubtractIndirectHL(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.HL, cpu.Registers.Flags())
+		alu.SubtractIndirectHL(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.HL, cpu.Registers.Flags())
 	case 0xD6:
-		SubtractImmediate(memory, &cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags())
+		alu.SubtractImmediate(memory, &cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags())
 
 	case 0x3C:
-		IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), "A")
+		alu.IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), "A")
 	case 0x04:
-		IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.BPtr(), cpu.Registers.Flags(), "B")
+		alu.IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.BPtr(), cpu.Registers.Flags(), "B")
 	case 0x0C:
-		IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.CPtr(), cpu.Registers.Flags(), "C")
+		alu.IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.CPtr(), cpu.Registers.Flags(), "C")
 	case 0x14:
-		IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.DPtr(), cpu.Registers.Flags(), "D")
+		alu.IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.DPtr(), cpu.Registers.Flags(), "D")
 	case 0x1C:
-		IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.EPtr(), cpu.Registers.Flags(), "E")
+		alu.IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.EPtr(), cpu.Registers.Flags(), "E")
 	case 0x24:
-		IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.HPtr(), cpu.Registers.Flags(), "H")
+		alu.IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.HPtr(), cpu.Registers.Flags(), "H")
 	case 0x2C:
-		IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.LPtr(), cpu.Registers.Flags(), "L")
+		alu.IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.LPtr(), cpu.Registers.Flags(), "L")
 
 	case 0x03:
-		Increment16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.BC, "BC")
+		alu.Increment16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.BC, "BC")
 	case 0x13:
-		Increment16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.DE, "DE")
+		alu.Increment16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.DE, "DE")
 	case 0x23:
-		Increment16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.HL, "HL")
+		alu.Increment16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.HL, "HL")
 	case 0x33:
-		Increment16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.SP, "SP")
+		alu.Increment16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.SP, "SP")
 
 	case 0x0B:
-		Decrement16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.BC, "BC")
+		alu.Decrement16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.BC, "BC")
 	case 0x1B:
-		Decrement16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.DE, "DE")
+		alu.Decrement16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.DE, "DE")
 	case 0x2B:
-		Decrement16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.HL, "HL")
+		alu.Decrement16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.HL, "HL")
 	case 0x3B:
-		Decrement16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.SP, "SP")
+		alu.Decrement16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.SP, "SP")
 
 	case 0xFE:
-		CompareImmediate(memory, &cpu.Registers.PC, cpu.Registers.A(), cpu.Registers.Flags())
+		alu.CompareImmediate(memory, &cpu.Registers.PC, cpu.Registers.A(), cpu.Registers.Flags())
 
 	case 0xCD:
 		Call(memory, &cpu.Registers.PC, &cpu.Registers.SP)
