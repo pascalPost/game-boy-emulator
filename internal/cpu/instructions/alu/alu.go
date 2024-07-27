@@ -182,6 +182,28 @@ func Increment16BitRegister(memory *cpu.Memory, programCounter uint16, register 
 	cpu.Log(memory, programCounter, instructionLengthInBytes, instruction, description)
 }
 
+func DecrementRegister(memory *cpu.Memory, programCounter uint16, register *uint8, flags cpu.FlagsPtr, registerName string) {
+	old := *register
+	*register = old - 1
+
+	if *register == 0 {
+		flags.SetZ()
+	} else {
+		flags.ClearZ()
+	}
+	flags.ClearN()
+	if halfCarrySub(old, 1) {
+		flags.SetH()
+	} else {
+		flags.ClearH()
+	}
+
+	instructionLengthInBytes := 1
+	instruction := fmt.Sprintf("DEC %s", registerName)
+	description := "DEC r8: Increments data in the 8-bit register r8."
+	cpu.Log(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
 func Decrement16BitRegister(memory *cpu.Memory, programCounter uint16, register *uint16, registerName string) {
 	*register--
 

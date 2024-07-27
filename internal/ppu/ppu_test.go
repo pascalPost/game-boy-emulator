@@ -1,7 +1,10 @@
-package internal
+package main
 
 import (
+	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/stretchr/testify/assert"
+	"runtime"
+	"slices"
 	"testing"
 )
 
@@ -48,4 +51,34 @@ func TestTileComputation(t *testing.T) {
 	}
 
 	assert.Equal(t, colorValues, result)
+
+	slices.Reverse(colorValues[:])
+
+	l := 0
+	for _, v := range colorValues {
+		l += len(v)
+	}
+	colors := make([]byte, 0, l)
+	for _, v := range colorValues {
+		colors = append(colors, v[:]...)
+	}
+
+	plotTile(colors)
+}
+
+func plotTile(cellColors []uint8) {
+	runtime.LockOSThread()
+
+	window := initGlfw()
+	defer glfw.Terminate()
+
+	program := initOpenGL()
+
+	display := newDisplay(true, 8, 8)
+
+	_ = display.updateColors(cellColors)
+
+	for !window.ShouldClose() {
+		draw(display, window, program)
+	}
 }

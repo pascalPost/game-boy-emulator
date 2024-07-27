@@ -48,11 +48,11 @@ func (f FlagsPtr) Z() bool {
 	return checkBit(*f.data, 7)
 }
 
-func (f FlagsPtr) n() bool {
+func (f FlagsPtr) N() bool {
 	return checkBit(*f.data, 6)
 }
 
-func (f FlagsPtr) h() bool {
+func (f FlagsPtr) H() bool {
 	return checkBit(*f.data, 5)
 }
 

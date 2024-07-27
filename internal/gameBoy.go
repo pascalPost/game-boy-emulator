@@ -8,8 +8,8 @@ import (
 )
 
 type GameBoy struct {
-	cpu    cpu.Cpu
-	memory cpu.Memory
+	Cpu    cpu.Cpu
+	Memory cpu.Memory
 }
 
 func (gb *GameBoy) LoadCartridge(path string) error {
@@ -19,7 +19,7 @@ func (gb *GameBoy) LoadCartridge(path string) error {
 		return err
 	}
 
-	copy(gb.memory.Data[0:], rom)
+	copy(gb.Memory.Data[0:], rom)
 
 	return nil
 }
@@ -32,10 +32,10 @@ func (gb *GameBoy) Run(startAddress uint16) {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 
 	const initialStackPointerAddress uint16 = 0xFFFE
-	gb.cpu.Registers.PC = startAddress
-	gb.cpu.Registers.SP = initialStackPointerAddress
+	gb.Cpu.Registers.PC = startAddress
+	gb.Cpu.Registers.SP = initialStackPointerAddress
 
 	for {
-		instructions.RunInstruction(&gb.cpu, &gb.memory)
+		instructions.RunInstruction(&gb.Cpu, &gb.Memory)
 	}
 }

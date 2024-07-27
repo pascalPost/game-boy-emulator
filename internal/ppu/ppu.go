@@ -5,7 +5,6 @@ import (
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"log"
-	"runtime"
 	"strings"
 )
 
@@ -18,7 +17,7 @@ const (
 		layout(location = 0) in vec2 aPos;
 		layout(location = 1) in uint aColor;
 
-		out uint color;
+		flat out uint color;
 
 		void main() {
 			gl_Position = vec4(aPos, 0.0, 1.0);
@@ -29,96 +28,26 @@ const (
 	fragmentShaderSource = `
 		#version 410
 		out vec4 FragColor;
-		in uint color;
+		flat in uint color;
+
 		void main() {
 			vec3 colorVec = vec3(1.0, 1.0, 1.0);
-			if (color == 1u) {
-				colorVec = vec3(0.5, 0.5, 0.5);
+			if (color == 0u) {
+				colorVec = vec3(1.0, 1.0, 1.0); // White
+			} else if (color == 1u) {
+				colorVec = vec3(0.75, 0.75, 0.75); // Light Gray
+			} else if (color == 2u) {
+				colorVec = vec3(0.25, 0.25, 0.25); // Dark Gray
+			} else if (color == 3u) {
+				colorVec = vec3(0.0, 0.0, 0.0); // Black
+			} else {
+				colorVec = vec3(1.0, 1.0, 0.0); // Default to Yellow
 			}
 
 			FragColor = vec4(colorVec, 1.0);
 		}
 	` + "\x00"
 )
-
-var (
-	square = []float32{
-		-0.5, 0.5,
-		-0.5, -0.5,
-		0.5, -0.5,
-
-		-0.5, 0.5,
-		0.5, 0.5,
-		0.5, -0.5,
-	}
-
-	colors = []uint32{
-		1,
-		1,
-		1,
-
-		1,
-		1,
-		1,
-	}
-)
-
-func main() {
-	runtime.LockOSThread()
-
-	window := initGlfw()
-	defer glfw.Terminate()
-
-	program := initOpenGL()
-
-	vao := makeVao(square, colors)
-
-	for !window.ShouldClose() {
-		draw(vao, window, program)
-	}
-}
-
-func draw(vao uint32, window *glfw.Window, program uint32) {
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-	gl.UseProgram(program)
-
-	gl.BindVertexArray(vao)
-	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(square)/2))
-
-	glfw.PollEvents()
-	window.SwapBuffers()
-}
-
-// makeVao initializes and returns a vertex array from the points provided.
-func makeVao(vertices []float32, colors []uint32) uint32 {
-	var vao uint32
-	var vbo uint32
-	var colorBuffer uint32
-
-	gl.GenVertexArrays(1, &vao)
-	gl.GenBuffers(1, &vbo)
-	gl.GenBuffers(1, &colorBuffer)
-
-	gl.BindVertexArray(vao)
-
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	gl.BufferData(gl.ARRAY_BUFFER, 4*len(vertices), gl.Ptr(vertices), gl.STATIC_DRAW)
-
-	gl.BindBuffer(gl.ARRAY_BUFFER, colorBuffer)
-	gl.BufferData(gl.ARRAY_BUFFER, 4*len(colors), gl.Ptr(colors), gl.STATIC_DRAW)
-
-	// position attribute
-	gl.EnableVertexAttribArray(0)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 0, nil)
-
-	// color attribute
-	gl.EnableVertexAttribArray(1)
-	gl.BindBuffer(gl.ARRAY_BUFFER, colorBuffer)
-	gl.VertexAttribPointer(1, 1, gl.UNSIGNED_INT, false, 2, nil)
-
-	return vao
-}
 
 func initOpenGL() uint32 {
 	if err := gl.Init(); err != nil {
@@ -185,4 +114,14 @@ func compileShader(source string, shaderType uint32) (uint32, error) {
 	}
 
 	return shader, nil
+}
+
+func draw(disp *pixelDisplay, window *glfw.Window, program uint32) {
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	gl.UseProgram(program)
+
+	disp.draw()
+
+	glfw.PollEvents()
+	window.SwapBuffers()
 }

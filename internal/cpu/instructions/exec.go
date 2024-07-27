@@ -221,6 +221,9 @@ func RunInstruction(cpu *Cpu, memory *Memory) {
 	case 0x2A:
 		LoadAccumulatorIndirectHLIncrement(memory, cpu.Registers.PC, cpu.Registers.APtr(), &cpu.Registers.HL)
 
+	case 0x22:
+		LoadFromAccumulatorIndirectHLIncrement(memory, cpu.Registers.PC, cpu.Registers.A(), &cpu.Registers.HL)
+
 	case 0x32:
 		LoadFromAccumulatorIndirectHLDecrement(memory, cpu.Registers.PC, cpu.Registers.A(), &cpu.Registers.HL)
 
@@ -323,6 +326,21 @@ func RunInstruction(cpu *Cpu, memory *Memory) {
 		alu.IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.HPtr(), cpu.Registers.Flags(), "H")
 	case 0x2C:
 		alu.IncrementRegister(memory, cpu.Registers.PC, cpu.Registers.LPtr(), cpu.Registers.Flags(), "L")
+
+	case 0x3D:
+		alu.DecrementRegister(memory, cpu.Registers.PC, cpu.Registers.APtr(), cpu.Registers.Flags(), "A")
+	case 0x05:
+		alu.DecrementRegister(memory, cpu.Registers.PC, cpu.Registers.BPtr(), cpu.Registers.Flags(), "B")
+	case 0x0D:
+		alu.DecrementRegister(memory, cpu.Registers.PC, cpu.Registers.CPtr(), cpu.Registers.Flags(), "C")
+	case 0x15:
+		alu.DecrementRegister(memory, cpu.Registers.PC, cpu.Registers.DPtr(), cpu.Registers.Flags(), "D")
+	case 0x1D:
+		alu.DecrementRegister(memory, cpu.Registers.PC, cpu.Registers.EPtr(), cpu.Registers.Flags(), "E")
+	case 0x25:
+		alu.DecrementRegister(memory, cpu.Registers.PC, cpu.Registers.HPtr(), cpu.Registers.Flags(), "H")
+	case 0x2D:
+		alu.DecrementRegister(memory, cpu.Registers.PC, cpu.Registers.LPtr(), cpu.Registers.Flags(), "L")
 
 	case 0x03:
 		alu.Increment16BitRegister(memory, cpu.Registers.PC, &cpu.Registers.BC, "BC")

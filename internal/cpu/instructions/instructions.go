@@ -57,7 +57,7 @@ func RelativeJumpConditional(memory *cpu.Memory, programCounter *uint16, conditi
 	}
 
 	instructionLengthInBytes := 2
-	instruction := fmt.Sprintf("JR %s, %d", conditionName, e8)
+	instruction := fmt.Sprintf("JR %s, %d (0x%04X)", conditionName, e8, *programCounter)
 	description := "JR cc, e: Conditional jump to the relative address speciﬁed by the signed 8-bit operand e, depending on the condition cc."
 	cpu.Log(memory, pc, instructionLengthInBytes, instruction, description)
 }
@@ -193,6 +193,18 @@ func LoadFromAccumulatorIndirectHLDecrement(memory *cpu.Memory, programCounter u
 	instructionLengthInBytes := 1
 	instruction := "LDD [HL], A"
 	description := "LDD [HL], A: Load to the absolute address speciﬁed by the 16-bit register HL, data from the 8-bit A register. The value of HL is decremented after the memory write."
+	cpu.Log(memory, programCounter, instructionLengthInBytes, instruction, description)
+}
+
+func LoadFromAccumulatorIndirectHLIncrement(memory *cpu.Memory, programCounter uint16, registerA uint8, registerHL *uint16) {
+	n8 := registerA
+	a16 := *registerHL
+	memory.Write(a16, n8)
+	*registerHL++
+
+	instructionLengthInBytes := 1
+	instruction := "LDI [HL], A"
+	description := "LDI [HL], A: Load to the absolute address speciﬁed by the 16-bit register HL, data from the 8-bit A register. The value of HL is incremented after the memory write."
 	cpu.Log(memory, programCounter, instructionLengthInBytes, instruction, description)
 }
 
