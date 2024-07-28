@@ -1,9 +1,12 @@
 package tests
 
 import (
+	"fmt"
 	"github.com/pascalPost/game-boy-emulator/internal"
 	"github.com/pascalPost/game-boy-emulator/internal/cpu/instructions"
+	"github.com/pascalPost/game-boy-emulator/internal/ppu"
 	"github.com/stretchr/testify/assert"
+	"slices"
 	"testing"
 )
 
@@ -13,6 +16,18 @@ func TestBoot(t *testing.T) {
 	assert.NoError(t, err)
 
 	gb.Cpu.Registers.PC = 0x0000
+
+	// copy nintendo logo to vram
+
+	logo := []byte{
+		0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
+		0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E, 0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99,
+		0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E,
+	}
+
+	for i, b := range logo {
+		gb.Memory.Write(uint16(0x104+i), b)
+	}
 
 	// setup stack
 
@@ -138,7 +153,26 @@ func TestBoot(t *testing.T) {
 
 	assert.Equal(t, uint16(0x0062), gb.Cpu.Registers.PC)
 
-	//runGraphics()
+	fmt.Printf("VRAM: % 02X\n", gb.Memory.Data[0x8000:0x8020])
+
+	pixels := ppu.GetPixels(gb.Memory.Data[0x8010:0x8020])
+
+	// TODO move this into GetPixels
+	slices.Reverse(pixels[:])
+	l := 0
+	for _, v := range pixels {
+		l += len(v)
+	}
+	colors := make([]byte, 0, l)
+	for _, v := range pixels {
+		colors = append(colors, v[:]...)
+	}
+
+	ppu.PlotTile(colors)
+
+	// TODO plot TileMap
+	// TODO plot BGMap
+	// TODO plot screen
 
 	//// wait for screen
 	//
@@ -157,3 +191,20 @@ func TestBoot(t *testing.T) {
 	//instructions.RunInstruction(&gb.Cpu, &gb.Memory)
 
 }
+
+//func plotTileMap(cellColors []uint8) {
+//	runtime.LockOSThread()
+//
+//	window := initGlfw()
+//	defer glfw.Terminate()
+//
+//	program := initOpenGL()
+//
+//	display := newDisplay(true, 8, 8)
+//
+//	_ = display.updateColors(cellColors)
+//
+//	for !window.ShouldClose() {
+//		draw(display, window, program)
+//	}
+//}
