@@ -7,11 +7,11 @@ import (
 )
 
 func TestTileComputation(t *testing.T) {
-	tile := [16]byte{0x3C, 0x7E, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x7E, 0x5E, 0x7E, 0x0A, 0x7C, 0x56, 0x38, 0x7C}
+	tile := []byte{0x3C, 0x7E, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x7E, 0x5E, 0x7E, 0x0A, 0x7C, 0x56, 0x38, 0x7C}
 
-	result := GetPixels(tile[:])
+	result := ComputePixelColors(tile)
 
-	colorValues := [8][8]byte{
+	colorValues := [][]byte{
 		{0, 2, 3, 3, 3, 3, 2, 0},
 		{0, 3, 0, 0, 0, 0, 3, 0},
 		{0, 3, 0, 0, 0, 0, 3, 0},
@@ -22,8 +22,7 @@ func TestTileComputation(t *testing.T) {
 		{0, 2, 3, 3, 3, 2, 0, 0},
 	}
 
-	assert.Equal(t, colorValues, result)
-
+	// reverse and flatten colorValues to match form used for opengl
 	slices.Reverse(colorValues[:])
 
 	l := 0
@@ -35,5 +34,11 @@ func TestTileComputation(t *testing.T) {
 		colors = append(colors, v[:]...)
 	}
 
-	//plotTile(colors)
+	assert.Equal(t, colors, result)
+
+	PlotTile(colors)
+}
+
+func TestTileMap(t *testing.T) {
+	PlotTileMap()
 }

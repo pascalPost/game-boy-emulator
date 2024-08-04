@@ -17,6 +17,7 @@ type pixelDisplay struct {
 	rows, cols        uint
 	points            []float32
 	colors            []uint32
+	program           uint32
 	vertexArrayObject uint32
 	vboVertices       uint32
 	vboColors         uint32
@@ -51,6 +52,44 @@ func (d *pixelDisplay) createBuffers() {
 func newDisplay(showPixel bool, rows, cols uint) *pixelDisplay {
 	d := &pixelDisplay{rows: rows, cols: cols}
 
+	const vertexShaderSource = `
+		#version 410
+		layout(location = 0) in vec2 aPos;
+		layout(location = 1) in uint aColor;
+
+		flat out uint color;
+
+		void main() {
+			gl_Position = vec4(aPos, 0.0, 1.0);
+			color = aColor;
+		}
+	` + "\x00"
+
+	const fragmentShaderSource = `
+		#version 410
+		out vec4 FragColor;
+		flat in uint color;
+
+		void main() {
+			vec3 colorVec = vec3(1.0, 1.0, 1.0);
+			if (color == 0u) {
+				colorVec = vec3(1.0, 1.0, 1.0); // White
+			} else if (color == 1u) {
+				colorVec = vec3(0.75, 0.75, 0.75); // Light Gray
+			} else if (color == 2u) {
+				colorVec = vec3(0.25, 0.25, 0.25); // Dark Gray
+			} else if (color == 3u) {
+				colorVec = vec3(0.0, 0.0, 0.0); // Black
+			} else {
+				colorVec = vec3(1.0, 1.0, 0.0); // Default to Yellow
+			}
+
+			FragColor = vec4(colorVec, 1.0);
+		}
+	` + "\x00"
+
+	d.program = NewProgram(vertexShaderSource, fragmentShaderSource)
+
 	pixelDistance := float32(0.0)
 
 	if showPixel {
@@ -60,16 +99,16 @@ func newDisplay(showPixel bool, rows, cols uint) *pixelDisplay {
 	nCells := rows * cols
 	nPoints := nCells * nTrianglesPerCell * nPointsPerTriangle
 
-	dx := length / float32(rows)
-	dy := length / float32(cols)
+	dx := length / float32(cols)
+	dy := length / float32(rows)
 
 	d.points = make([]float32, nPoints*dimensions)
 
-	for j := uint(0); j < cols; j++ {
+	for j := uint(0); j < rows; j++ {
 		yLow := start + dy*float32(j) + pixelDistance
 		yUp := start + dy*float32(j) + dy - pixelDistance
 
-		for i := uint(0); i < rows; i++ {
+		for i := uint(0); i < cols; i++ {
 			xLeft := start + dx*float32(i) + pixelDistance
 			xRight := start + dx*float32(i) + dx - pixelDistance
 
@@ -83,7 +122,7 @@ func newDisplay(showPixel bool, rows, cols uint) *pixelDisplay {
 				xRight, yLow,
 			}
 
-			index := uint(len(square)) * (i + j*rows)
+			index := uint(len(square)) * (i + j*cols)
 
 			copy(d.points[index:index+uint(len(square))], square)
 		}
@@ -97,6 +136,7 @@ func newDisplay(showPixel bool, rows, cols uint) *pixelDisplay {
 }
 
 func (d *pixelDisplay) draw() {
+	gl.UseProgram(d.program)
 	gl.BindVertexArray(d.vertexArrayObject)
 	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(d.points)/dimensions))
 }

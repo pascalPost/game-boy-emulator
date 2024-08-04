@@ -1,12 +1,10 @@
 package tests
 
 import (
-	"fmt"
 	"github.com/pascalPost/game-boy-emulator/internal"
 	"github.com/pascalPost/game-boy-emulator/internal/cpu/instructions"
 	"github.com/pascalPost/game-boy-emulator/internal/ppu"
 	"github.com/stretchr/testify/assert"
-	"slices"
 	"testing"
 )
 
@@ -153,22 +151,30 @@ func TestBoot(t *testing.T) {
 
 	assert.Equal(t, uint16(0x0062), gb.Cpu.Registers.PC)
 
-	fmt.Printf("VRAM: % 02X\n", gb.Memory.Data[0x8000:0x8020])
+	//fmt.Printf("VRAM: % 02X\n", gb.Memory.Data[0x8000:0x8020])
 
-	pixels := ppu.GetPixels(gb.Memory.Data[0x8010:0x8020])
+	//pixels := ppu.ComputePixelColors(gb.Memory.Data[0x8010:0x8020])
 
-	// TODO move this into GetPixels
-	slices.Reverse(pixels[:])
-	l := 0
-	for _, v := range pixels {
-		l += len(v)
+	// 2*8*16 tiles with 8*8 each
+	// using an uint8 results in a waste of 6 bits; this can be optimized
+	tileMapSize := 3 * 8 * 16
+	tilePixelSize := 8 * 8
+	tileMapPixelData := make([]uint8, tileMapSize*tilePixelSize)
+
+	const tileSize = 16
+	const vRAMStart = 0x8000
+	for tileIndex := 0; tileIndex < tileMapSize; tileIndex++ {
+		tileVRAMStart := vRAMStart + tileIndex*tileSize
+		tileVRAMEnd := tileVRAMStart + tileSize
+		pixelDataStart := tileIndex * tilePixelSize
+		pixelDataEnd := pixelDataStart + tilePixelSize
+		ppu.ConvertIntoPixelColors(gb.Memory.Data[tileVRAMStart:tileVRAMEnd], tileMapPixelData[pixelDataStart:pixelDataEnd])
 	}
-	colors := make([]byte, 0, l)
-	for _, v := range pixels {
-		colors = append(colors, v[:]...)
-	}
 
-	ppu.PlotTile(colors)
+	//ppu.PlotTile(tileMapPixelData[64 : 64+64])
+	//ppu.PlotTile(tileMapPixelData[64+64 : 64+64+64])
+
+	ppu.PlotTileMap(tileMapPixelData)
 
 	// TODO plot TileMap
 	// TODO plot BGMap
