@@ -159,16 +159,14 @@ func TestBoot(t *testing.T) {
 	// using an uint8 results in a waste of 6 bits; this can be optimized
 	tileMapSize := 3 * 8 * 16
 	tilePixelSize := 8 * 8
-	tileMapPixelData := make([]uint8, tileMapSize*tilePixelSize)
+	tileMapPixelData := make([]uint8, 0, tileMapSize*tilePixelSize)
 
 	const tileSize = 16
 	const vRAMStart = 0x8000
 	for tileIndex := 0; tileIndex < tileMapSize; tileIndex++ {
 		tileVRAMStart := vRAMStart + tileIndex*tileSize
 		tileVRAMEnd := tileVRAMStart + tileSize
-		pixelDataStart := tileIndex * tilePixelSize
-		pixelDataEnd := pixelDataStart + tilePixelSize
-		ppu.ConvertIntoPixelColors(gb.Memory.Data[tileVRAMStart:tileVRAMEnd], tileMapPixelData[pixelDataStart:pixelDataEnd])
+		tileMapPixelData = ppu.ConvertIntoPixelColors(gb.Memory.Data[tileVRAMStart:tileVRAMEnd], tileMapPixelData)
 	}
 
 	//ppu.PlotTile(tileMapPixelData[64 : 64+64])
@@ -176,7 +174,6 @@ func TestBoot(t *testing.T) {
 
 	ppu.PlotTileMap(tileMapPixelData)
 
-	// TODO plot TileMap
 	// TODO plot BGMap
 	// TODO plot screen
 

@@ -9,7 +9,13 @@ import (
 )
 
 const (
-	vertexShaderDefaultColorSource = `
+	start              = float32(-1.0)
+	length             = float32(2.0)
+	dimensions         = 2
+	nTrianglesPerCell  = 2
+	nPointsPerTriangle = 3
+
+	vertexShader2DNoColor = `
 		#version 410
 		layout(location = 0) in vec2 aPos;
 
@@ -18,12 +24,57 @@ const (
 		}
 	` + "\x00"
 
-	fragmentShaderDefaultColorSource = `
+	vertexShader2DColor = `
+		#version 410
+		layout(location = 0) in vec2 aPos;
+		layout(location = 1) in uint aColor;
+
+		flat out uint color;
+
+		void main() {
+			gl_Position = vec4(aPos, 0.0, 1.0);
+			color = aColor;
+		}
+	` + "\x00"
+
+	fragmentShaderRed = `
 		#version 410
 		out vec4 FragColor;
 
 		void main() {
 			FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+		}
+	` + "\x00"
+
+	fragmentShaderBlack = `
+		#version 410
+		out vec4 FragColor;
+
+		void main() {
+			FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+		}
+	` + "\x00"
+
+	fragmentShaderColor = `
+		#version 410
+		out vec4 FragColor;
+		flat in uint color;
+
+		void main() {
+			vec3 colorVec = vec3(1.0, 1.0, 1.0);
+			if (color == 0u) {
+				colorVec = vec3(1.0, 1.0, 1.0); // White
+			} else if (color == 1u) {
+				colorVec = vec3(0.75, 0.75, 0.75); // Light Gray
+			} else if (color == 2u) {
+				colorVec = vec3(0.25, 0.25, 0.25); // Dark Gray
+			} else if (color == 3u) {
+				colorVec = vec3(0.0, 0.0, 0.0); // Black
+			} else {
+				colorVec = vec3(1.0, 1.0, 0.0); // Default to Yellow
+			}
+
+			FragColor = vec4(colorVec, 1.0);
 		}
 	` + "\x00"
 )
@@ -96,13 +147,3 @@ func compileShader(source string, shaderType uint32) (uint32, error) {
 
 	return shader, nil
 }
-
-//func draw(disp *pixelDisplay, window *glfw.Window, program uint32) {
-//	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-//	gl.UseProgram(program)
-//
-//	disp.draw()
-//
-//	glfw.PollEvents()
-//	window.SwapBuffers()
-//}
