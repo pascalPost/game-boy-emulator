@@ -7,11 +7,13 @@ import (
 )
 
 const (
-	tileRows = 8
-	tileCols = 8
-	tileMaps = 3
-	mapRows  = 8
-	mapCols  = 16
+	tileRows      = 8
+	tileCols      = 8
+	tileAreas     = 3
+	tilesDataRows = 8
+	tilesDataCols = 16
+	bgMapRows     = 32
+	bgMapCols     = 32
 )
 
 func ConvertIntoPixelColors(tile []byte, pixelColor []byte) []byte {
@@ -129,7 +131,54 @@ func PlotTile(cellColors []uint8) {
 	}
 }
 
-func PlotTileMap(pixelData []byte) {
+func PlotBGMap(pixelColorData []byte) {
+	runtime.LockOSThread()
+
+	window := initGlfw(750, 750)
+	defer glfw.Terminate()
+
+	initOpenGL()
+
+	pixelData := initBGMapPixels()
+
+	colorData := make([]uint32, pixelData.nVertices)
+
+	// Color buffer
+	var vboColors uint32
+	gl.GenBuffers(1, &vboColors)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vboColors)
+	gl.BufferData(gl.ARRAY_BUFFER, 4*len(colorData), gl.Ptr(colorData), gl.DYNAMIC_DRAW)
+	gl.VertexAttribIPointer(1, 1, gl.UNSIGNED_INT, 0, nil)
+	gl.EnableVertexAttribArray(1)
+
+	gridData := initGrid(bgMapRows, bgMapCols)
+
+	for i, color := range pixelColorData {
+		for cellPoint := 0; cellPoint < nTrianglesPerCell*nPointsPerTriangle; cellPoint++ {
+			colorData[i*nTrianglesPerCell*nPointsPerTriangle+cellPoint] = uint32(color)
+		}
+	}
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, vboColors)
+	gl.BufferSubData(gl.ARRAY_BUFFER, 0, 4*len(colorData), gl.Ptr(colorData))
+
+	for !window.ShouldClose() {
+		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+		gl.UseProgram(pixelData.program)
+		gl.BindVertexArray(pixelData.vertexArrayObject)
+		gl.DrawArrays(gl.TRIANGLES, 0, pixelData.nVertices)
+
+		gl.UseProgram(gridData.program)
+		gl.BindVertexArray(gridData.vertexArrayObject)
+		gl.DrawArrays(gl.LINES, 0, gridData.nVertices)
+
+		glfw.PollEvents()
+		window.SwapBuffers()
+	}
+}
+
+func PlotTiles(pixelData []byte) {
 	runtime.LockOSThread()
 
 	window := initGlfw(500, 750)
@@ -137,7 +186,7 @@ func PlotTileMap(pixelData []byte) {
 
 	initOpenGL()
 
-	tilePixelData := initTilePixels()
+	tilePixelData := initTilesPixels()
 
 	colorData := make([]uint32, tilePixelData.nVertices*dimensions)
 
@@ -149,9 +198,9 @@ func PlotTileMap(pixelData []byte) {
 	gl.VertexAttribIPointer(1, 1, gl.UNSIGNED_INT, 0, nil)
 	gl.EnableVertexAttribArray(1)
 
-	tileMapGridData := initTileMapGrid()
+	tileMapGridData := initTilesGrid()
 
-	tileMapSplitData := initTileMapSplit()
+	tileMapSplitData := initTilesSplit()
 
 	for i, color := range pixelData {
 		for cellPoint := 0; cellPoint < nTrianglesPerCell*nPointsPerTriangle; cellPoint++ {
@@ -188,7 +237,7 @@ type glData struct {
 	nVertices         int32
 }
 
-func initTileMapSplit() glData {
+func initTilesSplit() glData {
 	tileMapSplitProgram := NewProgram(vertexShader2DNoColor, fragmentShaderRed)
 
 	var tileMapSplitVao uint32
@@ -211,13 +260,13 @@ func initTileMapSplit() glData {
 	return glData{tileMapSplitProgram, tileMapSplitVao, tileMapSplitVertices}
 }
 
-func initTileMapGrid() glData {
+func initTilesGrid() glData {
 	tileMapGridProgram := NewProgram(vertexShader2DNoColor, fragmentShaderBlack)
 
-	const deltaX = length / mapCols
-	const deltaY = length / tileMaps / mapRows
+	const deltaX = length / tilesDataCols
+	const deltaY = length / tileAreas / tilesDataRows
 
-	const nVertices = (mapCols-1)*2 + (mapRows-1)*2*tileMaps
+	const nVertices = (tilesDataCols-1)*2 + (tilesDataRows-1)*2*tileAreas
 
 	tileMapGridLineData := make([]float32, 0, nVertices)
 
@@ -230,6 +279,49 @@ func initTileMapGrid() glData {
 	}
 
 	const endY = end - deltaY + tol
+	for y := start + deltaY; y < endY; y += deltaY {
+		tileMapGridLineData = append(tileMapGridLineData, start, y, end, y)
+	}
+
+	var tileMapGridVertices int32
+	tileMapGridVertices = int32(len(tileMapGridLineData)) / 2
+
+	var tileMapGridVao uint32
+	gl.GenVertexArrays(1, &tileMapGridVao)
+	gl.BindVertexArray(tileMapGridVao)
+
+	// Vertex buffer
+	var vboVertices uint32
+	gl.GenBuffers(1, &vboVertices)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vboVertices)
+	gl.BufferData(gl.ARRAY_BUFFER, 4*len(tileMapGridLineData), gl.Ptr(tileMapGridLineData), gl.STATIC_DRAW)
+	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 0, nil)
+	gl.EnableVertexAttribArray(0)
+
+	return glData{tileMapGridProgram, tileMapGridVao, tileMapGridVertices}
+}
+
+func initGrid(rows, cols uint) glData {
+	// TODO merge with initTilesGrid
+
+	tileMapGridProgram := NewProgram(vertexShader2DNoColor, fragmentShaderBlack)
+
+	deltaX := length / float32(cols)
+	deltaY := length / float32(rows)
+
+	nVertices := (cols-1)*2 + (rows-1)*2
+
+	tileMapGridLineData := make([]float32, 0, nVertices)
+
+	const end = length - start
+	const tol = 0.001
+
+	endX := end - deltaX + tol
+	for x := start + deltaX; x < endX; x += deltaX {
+		tileMapGridLineData = append(tileMapGridLineData, x, start, x, end)
+	}
+
+	endY := end - deltaY + tol
 	for y := start + deltaY; y < endY; y += deltaY {
 		tileMapGridLineData = append(tileMapGridLineData, start, y, end, y)
 	}
@@ -288,11 +380,52 @@ func appendTilePoints(xTileStart, xTileEnd, yTileStart, yTileEnd float32, data [
 	return data
 }
 
-func initTilePixels() glData {
+func initBGMapPixels() glData {
 	tileMapGridProgram := NewProgram(vertexShader2DColor, fragmentShaderColor)
 
-	const rows = tileMaps * mapRows
-	const cols = mapCols
+	const deltaX = length / bgMapCols
+	const deltaY = length / bgMapRows
+
+	const nTiles = bgMapCols * bgMapRows
+	const nPixels = nTiles * tileRows * tileCols
+
+	points := make([]float32, 0, nPixels*nTrianglesPerCell*nPointsPerTriangle*dimensions)
+
+	for rowIdx := 0; rowIdx < bgMapRows; rowIdx++ {
+		yStart := start + length - deltaY*float32(rowIdx)
+		yEnd := yStart - deltaY
+
+		for colIdx := 0; colIdx < bgMapCols; colIdx++ {
+			xStart := start + deltaX*float32(colIdx)
+			xEnd := xStart + deltaX
+
+			points = appendTilePoints(xStart, xEnd, yStart, yEnd, points)
+		}
+	}
+
+	var nVertices int32
+	nVertices = int32(len(points)) / dimensions
+
+	var vao uint32
+	gl.GenVertexArrays(1, &vao)
+	gl.BindVertexArray(vao)
+
+	// Vertex buffer
+	var vboVertices uint32
+	gl.GenBuffers(1, &vboVertices)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vboVertices)
+	gl.BufferData(gl.ARRAY_BUFFER, 4*len(points), gl.Ptr(points), gl.STATIC_DRAW)
+	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 0, nil)
+	gl.EnableVertexAttribArray(0)
+
+	return glData{tileMapGridProgram, vao, nVertices}
+}
+
+func initTilesPixels() glData {
+	tileMapGridProgram := NewProgram(vertexShader2DColor, fragmentShaderColor)
+
+	const rows = tileAreas * tilesDataRows
+	const cols = tilesDataCols
 
 	const deltaX = length / cols
 	const deltaY = length / rows
@@ -301,15 +434,15 @@ func initTilePixels() glData {
 
 	points := make([]float32, 0, nCells*nTrianglesPerCell*nPointsPerTriangle*dimensions)
 
-	for mapIdx := 0; mapIdx < tileMaps; mapIdx++ {
-		yMapStart := start + length - length/tileMaps*float32(mapIdx)
-		//yMapEnd := yMapStart - length/tileMaps
+	for mapIdx := 0; mapIdx < tileAreas; mapIdx++ {
+		yMapStart := start + length - length/tileAreas*float32(mapIdx)
+		//yMapEnd := yMapStart - length/tileAreas
 
-		for rowIdx := 0; rowIdx < mapRows; rowIdx++ {
+		for rowIdx := 0; rowIdx < tilesDataRows; rowIdx++ {
 			yStart := yMapStart - deltaY*float32(rowIdx)
 			yEnd := yStart - deltaY
 
-			for colIdx := 0; colIdx < mapCols; colIdx++ {
+			for colIdx := 0; colIdx < tilesDataCols; colIdx++ {
 				xStart := start + deltaX*float32(colIdx)
 				xEnd := xStart + deltaX
 
