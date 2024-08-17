@@ -9,11 +9,14 @@ import (
 )
 
 const (
-	start              = float32(-1.0)
-	length             = float32(2.0)
-	dimensions         = 2
-	nTrianglesPerCell  = 2
-	nPointsPerTriangle = 3
+	start                = float32(-1.0)
+	end                  = float32(1.0)
+	length               = float32(2.0)
+	Dimensions           = 2
+	NumTrianglesPerCell  = 2
+	NumPointsPerTriangle = 3
+	Float32ByteSize      = 4
+	Uint32ByteSize       = 4
 
 	vertexShader2DNoColor = `
 		#version 410
@@ -24,7 +27,7 @@ const (
 		}
 	` + "\x00"
 
-	vertexShader2DColor = `
+	VertexShader2DColor = `
 		#version 410
 		layout(location = 0) in vec2 aPos;
 		layout(location = 1) in uint aColor;
@@ -55,7 +58,7 @@ const (
 		}
 	` + "\x00"
 
-	fragmentShaderColor = `
+	FragmentShaderColor = `
 		#version 410
 		out vec4 FragColor;
 		flat in uint color;
@@ -97,7 +100,7 @@ func NewProgram(vertexShaderSource, fragmentShaderSource string) uint32 {
 	return prog
 }
 
-func initOpenGL() {
+func InitOpenGL() {
 	if err := gl.Init(); err != nil {
 		panic(err)
 	}
@@ -105,10 +108,13 @@ func initOpenGL() {
 	log.Println("OpenGL version", version)
 }
 
-func initGlfw(width, height uint) *glfw.Window {
+func InitGlfw() {
 	if err := glfw.Init(); err != nil {
 		panic(err)
 	}
+}
+
+func CreateWindow(width, height uint, title string, share *glfw.Window) *glfw.Window {
 
 	glfw.WindowHint(glfw.Resizable, glfw.False)
 	glfw.WindowHint(glfw.ContextVersionMajor, 4)
@@ -116,10 +122,14 @@ func initGlfw(width, height uint) *glfw.Window {
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
 
-	window, err := glfw.CreateWindow(int(width), int(height), "game-boy-emulator", nil, nil)
+	// TODO Make this runtime configurable
+	glfw.WindowHint(glfw.OpenGLDebugContext, glfw.True)
+
+	window, err := glfw.CreateWindow(int(width), int(height), title, nil, share)
 	if err != nil {
 		panic(err)
 	}
+
 	window.MakeContextCurrent()
 
 	return window

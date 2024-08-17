@@ -161,11 +161,10 @@ func TestBoot(t *testing.T) {
 	tilePixelSize := 8 * 8
 	tileMapPixelData := make([]uint8, 0, tileMapSize*tilePixelSize)
 
-	const tileByteSize = 16
 	const vRAMStart = 0x8000
 	for tileIndex := 0; tileIndex < tileMapSize; tileIndex++ {
-		tileVRAMStart := vRAMStart + tileIndex*tileByteSize
-		tileVRAMEnd := tileVRAMStart + tileByteSize
+		tileVRAMStart := vRAMStart + tileIndex*ppu.TileByteSize
+		tileVRAMEnd := tileVRAMStart + ppu.TileByteSize
 		tileMapPixelData = ppu.ConvertIntoPixelColors(gb.Memory.Data[tileVRAMStart:tileVRAMEnd], tileMapPixelData)
 	}
 
@@ -180,12 +179,12 @@ func TestBoot(t *testing.T) {
 	const tileBasePointer = 0x8000
 	for vRamAddress := uint16(0x9800); vRamAddress < 0x9C00; vRamAddress++ {
 		tileIndex := gb.Memory.Read(vRamAddress)
-		tileAddress := tileBasePointer + int(tileIndex)*tileByteSize
-		tileData := gb.Memory.Data[tileAddress : tileAddress+tileByteSize]
+		tileAddress := tileBasePointer + int(tileIndex)*ppu.TileByteSize
+		tileData := gb.Memory.Data[tileAddress : tileAddress+ppu.TileByteSize]
 		data = ppu.ConvertIntoPixelColors(tileData, data)
 	}
 
-	ppu.PlotBGMap(data)
+	ppu.PlotBGMap(data, top, left, bottom, right)
 
 	// TODO plot screen
 

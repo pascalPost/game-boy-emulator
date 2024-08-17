@@ -13,7 +13,9 @@ byte data and its ASCII representation. You can test, e.g. with this
 3) Parse the json file with all opcodes (https://gbdev.io/gb-opcodes/Opcodes.json).
 4) Write a disassembler. You may test with the snake ROM.
 5) Begin programming the emulator by adding instructions for the load sequence of snake.
-6) Add the graphics.
+6) Add the graphics:
+6.1) Plot a tile.
+6.2) Plot the tile map.
 
 ## Resources
 
